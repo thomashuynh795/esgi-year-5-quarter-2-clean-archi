@@ -1,9 +1,5 @@
 # Système de base de données relationel SQL
 
-## Statut
-
-Accepté
-
 ## Contexte
 
 Pour que l'API puisse persister et lire des données, il faut les sauvegarder dans une base de données.

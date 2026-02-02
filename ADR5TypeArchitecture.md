@@ -1,9 +1,5 @@
 # API RESTful monolithique
 
-## Statut
-
-Accepté
-
 ## Contexte
 
 Afin d'enregistrer et de fournir toutes les données du système de réservation de parking, et afin d'appliquer les règles métier, une API est nécessaire.
