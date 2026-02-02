@@ -1,7 +1,4 @@
-## ADR Admin Application
-
-### Titre:
-Choix d'une application admin
+## ADR Choix d'une application admin
 
 ### Contexte:
 Face à la demande métier, nous devons faire un choix sur la création d'une application admin afin de modifier des valeurs tels que le nombre de places réservées aux gérants.

@@ -1,7 +1,4 @@
-## ADR Type d'application
-
-### Titre:
-Choix du type d'application
+## ADR Choix du type d'application
 
 ### Contexte:
 L'application est destinée à un public non technique, cette application doit être simple, pratique et adaptée à leurs besoins spécifiques.

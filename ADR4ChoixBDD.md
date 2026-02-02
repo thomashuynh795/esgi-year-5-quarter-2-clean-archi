@@ -1,13 +1,13 @@
-# Système de base de données relationel SQL
+## Système de base de données relationel SQL
 
-## Contexte
+### Contexte
 
 Pour que l'API puisse persister et lire des données, il faut les sauvegarder dans une base de données.
 
-## Décision
+### Décision
 
 Nous avons choisi un SGBD relationnel SQL parce que c'est structuré, on peut facilement créer des liens entre les tables pour faire de la recherche. Nous avons jugé que nous n'avions pas besoin des fonctionnalités des SQBL NoSQL et avons donc écarté ce choix.
 
-## Conséquences
+### Conséquences
 
 Bonne sécuritė, plus de structure, facilité pour les développeurs qui sont plus familier avec ce choix et déboggage puis efficace.

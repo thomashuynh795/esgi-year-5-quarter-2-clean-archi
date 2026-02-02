@@ -1,7 +1,5 @@
-## ADR Choix de Stack Développement 
+## ADR Choix de la stack a utiliser pour l'appliction mobile et web 
 
-### Titre:
-Choix de la stack a utiliser pour l'appliction mobile et web 
 
 ### Contexte:
 Pour développer une application mobile et web disponible sur iOS et Android, les contraintes principales sont le délai de mise en prod et la coherence entre les deux systemes.
