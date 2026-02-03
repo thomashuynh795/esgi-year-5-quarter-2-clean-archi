@@ -2,13 +2,12 @@
 
 
 ### Contexte:
-Pour développer une application mobile et web disponible sur iOS et Android, les contraintes principales sont le délai de mise en prod et la coherence entre les deux systemes.
-On a donc le choix entre : développement en  Swift (iOS) et Kotlin (Android) ou de developper une fois en  Flutter.
+Pour développer une web responsive, on peut partir sur plusieurs techno comme React, Angular, Vue.
 
 
 ### Décision:
-Développement Flutter : Base de code unique nous écrivons le code une seule fois pour les trois plateformes avec des différences minime.
+Développement React car l'équipe est plus a l'aise avec React
 
 
 ### Conséquences:
-Réduction des coûts et des délais et une maintenance simplifier.
+Aucune
