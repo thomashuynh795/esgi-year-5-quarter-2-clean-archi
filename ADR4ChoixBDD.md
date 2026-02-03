@@ -6,7 +6,7 @@ Pour que l'API puisse persister et lire des données, il faut les sauvegarder da
 
 ### Décision
 
-Nous avons choisi un SGBD relationnel SQL parce que c'est structuré, on peut facilement créer des liens entre les tables pour faire de la recherche. Nous avons jugé que nous n'avions pas besoin des fonctionnalités des SQBL NoSQL et avons donc écarté ce choix.
+Nous avons choisi un SGBDR SQL (PostgreSQL) parce que c'est structuré, on peut facilement créer des liens entre les tables pour faire de la recherche. Nous avons jugé que nous n'avions pas besoin des fonctionnalités des SQBL NoSQL et avons donc écarté ce choix.
 
 ### Conséquences
 
