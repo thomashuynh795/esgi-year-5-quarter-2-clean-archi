@@ -1,4 +1,4 @@
-## ADR Choix d'une application admin
+## ADR Choix de la stack backend
 
 ### Contexte
 Pour notre API monolithique, nous devons choisir un langage et un outil pour communiquer avec la base de données PostgreSQL.
