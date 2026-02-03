@@ -7,6 +7,7 @@ interface ParkingSlot {
     name: string;
     row: string;
     type: string;
+    isReserved: boolean;
 }
 
 interface Reservation {
@@ -78,6 +79,20 @@ export default function Dashboard() {
                 reservationId
             });
             alert('Check-in confirmed!');
+            fetchMyReservations();
+        } catch (e: any) {
+            alert('Error: ' + (e.response?.data?.error || e.message));
+        }
+    };
+
+    const handleCancel = async (reservationId: number) => {
+        if (!confirm('Are you sure you want to cancel this reservation?')) return;
+        try {
+            await axios.post('http://localhost:3000/api/reservations/cancel', {
+                reservationId
+            });
+            alert('Reservation cancelled!');
+            fetchAvailableSlots();
             fetchMyReservations();
         } catch (e: any) {
             alert('Error: ' + (e.response?.data?.error || e.message));
@@ -167,18 +182,21 @@ export default function Dashboard() {
                                 {availableSlots.map(slot => (
                                     <div
                                         key={slot.id}
-                                        onClick={() => bookSlot(slot.id)}
+                                        onClick={() => !slot.isReserved && bookSlot(slot.id)}
                                         className={`
-                                            group relative aspect-square rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 transition-all duration-200
-                                            ${slot.type === 'ELECTRIC'
-                                                ? 'bg-slate-800/50 border-electric/30 hover:border-electric hover:shadow-[0_0_15px_-3px_rgba(250,204,21,0.3)]'
-                                                : 'bg-slate-800 border-slate-700 hover:border-primary hover:bg-slate-700'}
+                                            group relative aspect-square rounded-lg flex flex-col items-center justify-center border-2 transition-all duration-200
+                                            ${slot.isReserved
+                                                ? 'bg-slate-800/20 border-slate-800 text-slate-600 grayscale cursor-not-allowed opacity-50'
+                                                : slot.type === 'ELECTRIC'
+                                                    ? 'bg-slate-800/50 border-electric/30 hover:border-electric hover:shadow-[0_0_15px_-3px_rgba(250,204,21,0.3)] cursor-pointer'
+                                                    : 'bg-slate-800 border-slate-700 hover:border-primary hover:bg-slate-700 cursor-pointer'
+                                            }
                                         `}
-                                        title={`${slot.name} - ${slot.type}`}
+                                        title={`${slot.name} - ${slot.type}${slot.isReserved ? ' (Reserved)' : ''}`}
                                     >
-                                        <span className={`font-bold text-lg ${slot.type === 'ELECTRIC' ? 'text-electric' : 'text-slate-200'}`}>{slot.name}</span>
+                                        <span className={`font-bold text-lg ${slot.isReserved ? 'text-slate-600' : slot.type === 'ELECTRIC' ? 'text-electric' : 'text-slate-200'}`}>{slot.name}</span>
                                         {slot.type === 'ELECTRIC' && (
-                                            <span className="absolute bottom-1 right-1 text-[10px] text-electric">⚡</span>
+                                            <span className={`absolute bottom-1 right-1 text-[10px] ${slot.isReserved ? 'text-slate-600' : 'text-electric'}`}>⚡</span>
                                         )}
                                     </div>
                                 ))}
@@ -238,6 +256,14 @@ export default function Dashboard() {
                                                         className="btn btn-success text-xs py-1 px-3 shadow-lg shadow-emerald-500/20"
                                                     >
                                                         Check-in
+                                                    </button>
+                                                )}
+                                                {res.status !== 'CANCELLED' && (
+                                                    <button
+                                                        onClick={() => handleCancel(res.id)}
+                                                        className="btn btn-danger text-xs py-1 px-3 shadow-lg shadow-red-500/20 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
+                                                    >
+                                                        Cancel
                                                     </button>
                                                 )}
                                             </div>

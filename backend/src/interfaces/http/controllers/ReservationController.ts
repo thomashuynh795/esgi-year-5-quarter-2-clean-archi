@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { MakeReservation } from '../../../application/use-cases/MakeReservation';
 import { GetUserReservations } from '../../../application/use-cases/GetUserReservations';
+import { CancelReservation } from '../../../application/use-cases/CancelReservation';
 import { PrismaReservationRepository } from '../../../infrastructure/repositories/PrismaReservationRepository';
 import { PrismaParkingSlotRepository } from '../../../infrastructure/repositories/PrismaParkingSlotRepository';
 
@@ -68,6 +69,20 @@ export class ReservationController {
             // Assume job runs for "now"
             await useCase.execute(new Date());
             res.json({ message: 'Job executed' });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
+    async cancel(req: Request, res: Response) {
+        const { reservationId } = req.body;
+        const reservationRepository = new PrismaReservationRepository();
+        const useCase = new CancelReservation(reservationRepository);
+
+        try {
+            const reservation = await useCase.execute(Number(reservationId));
+            res.json(reservation);
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Internal Server Error' });

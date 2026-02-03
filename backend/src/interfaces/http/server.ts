@@ -30,6 +30,7 @@ app.get('/api/slots', (req, res) => parkingSlotController.getAvailable(req, res)
 app.post('/api/reservations', (req, res) => reservationController.create(req, res));
 app.get('/api/reservations/user/:userId', (req, res) => reservationController.getByUser(req, res));
 app.post('/api/reservations/checkin', (req, res) => reservationController.checkIn(req, res));
+app.post('/api/reservations/cancel', (req, res) => reservationController.cancel(req, res));
 app.post('/api/jobs/cancel-unconfirmed', (req, res) => reservationController.cancelUnconfirmed(req, res));
 
 app.listen(port, () => {
