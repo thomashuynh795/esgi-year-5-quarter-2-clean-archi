@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-slate-50 antialiased font-sans;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-indigo-600;
+  }
+
+  .btn-secondary {
+    @apply bg-surface border border-border text-slate-200 hover:bg-slate-700;
+  }
+
+  .btn-success {
+    @apply bg-success text-white hover:bg-emerald-600;
+  }
+
+  .card {
+    @apply bg-surface border border-border rounded-xl p-6 shadow-lg;
+  }
+
+  .input,
+  .select {
+    @apply bg-background border border-border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all;
+  }
+
+  .badge {
+    @apply px-2 py-1 rounded text-xs font-bold uppercase tracking-wider;
+  }
+}

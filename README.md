@@ -70,3 +70,12 @@ Script everything! Every repeatable action should be scripted : build.sh, run.sh
 
 
 ## Have fun!
+
+
+# Crée les tables
+docker-compose exec backend npx prisma migrate dev --name init_v2
+# Remplit la base (Seed)
+docker-compose exec backend npm run prisma:seed
+
+# Lancer les apps :
+./build.sh && ./run.sh

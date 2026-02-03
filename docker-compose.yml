@@ -21,7 +21,7 @@ services:
       - postgres
     # Wait for postgres to be ready and run migrations
     command: >
-      sh -c "npx prisma migrate dev --name init && node dist/interfaces/http/server.js"
+      sh -c "npx prisma db push && node dist/interfaces/http/server.js"
 
   frontend:
     build: ./frontend
