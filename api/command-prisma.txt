@@ -1,0 +1,5 @@
+npx prisma studio
+
+npx prisma push
+
+npx prisma db push

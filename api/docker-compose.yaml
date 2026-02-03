@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${DEVELOPMENT_DATABASE_USER}
+      POSTGRES_PASSWORD: ${DEVELOPMENT_DATABASE_PASSWORD}
+      POSTGRES_DB: ${DEVELOPMENT_DATABASE_NAME}
+    ports:
+      - ${DEVELOPMENT_DATABASE_HOST_PORT}:${DEVELOPMENT_DATABASE_CONTAINER_PORT}
+    volumes:
+      - development_database_volume:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - ${DEVELOPMENT_API_HOST_PORT}:${DEVELOPMENT_API_CONTAINER_PORT}
+    environment:
+      - DATABASE_URL=${DEVELOPMENT_DATABASE_URL}
+      - PORT=${DEVELOPMENT_API_CONTAINER_PORT}
+    depends_on:
+      - db
+
+volumes:
+  development_database_volume:
