@@ -2,6 +2,7 @@
 
 
 ### Contexte:
+
 Nous avons décidé de construire une application Web Responsive.
 Nous devons choisir une bibliothèque ou un framework JavaScript pour le front-end.
 Les options principales étaient React, Angular et Vue.js.
