@@ -2,11 +2,12 @@ import { PrismaClient } from '@prisma/client';
 import { Message } from '../../domain/entities/Message';
 import { MessageRepository } from '../../domain/repositories/MessageRepository';
 
+import prisma from '../database/prisma';
+
 export class PrismaMessageRepository implements MessageRepository {
-    private prisma: PrismaClient;
+    private prisma: PrismaClient = prisma;
 
     constructor() {
-        this.prisma = new PrismaClient();
     }
 
     async save(content: string): Promise<Message> {

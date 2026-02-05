@@ -2,11 +2,12 @@ import { PrismaClient, ParkingSlot as PrismaSlot } from '@prisma/client';
 import { ParkingSlot, SlotType } from '../../domain/entities/ParkingSlot';
 import { ParkingSlotRepository } from '../../domain/repositories/ParkingSlotRepository';
 
+import prisma from '../database/prisma';
+
 export class PrismaParkingSlotRepository implements ParkingSlotRepository {
-    private prisma: PrismaClient;
+    private prisma: PrismaClient = prisma;
 
     constructor() {
-        this.prisma = new PrismaClient();
     }
 
     async findAll(): Promise<ParkingSlot[]> {

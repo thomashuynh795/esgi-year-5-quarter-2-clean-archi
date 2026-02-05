@@ -40,9 +40,15 @@ model ParkingSlot {
   reservations Reservation[]
 }
 
+enum Period {
+  AM
+  PM
+}
+
 model Reservation {
   id        Int         @id @default(autoincrement())
   date      DateTime
+  period    Period      @default(AM)
   status    String      @default("CONFIRMED") // CONFIRMED, CANCELLED
   userId    Int
   user      User        @relation(fields: [userId], references: [id])
@@ -50,6 +56,6 @@ model Reservation {
   slot      ParkingSlot @relation(fields: [slotId], references: [id])
   createdAt DateTime    @default(now())
 
-  @@unique([date, slotId]) // A slot can only be booked once per day
+  @@unique([date, slotId, period]) // A slot can only be booked once per period per day
   @@index([date])
 }

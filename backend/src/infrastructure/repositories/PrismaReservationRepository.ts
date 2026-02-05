@@ -2,19 +2,36 @@ import { PrismaClient, Reservation as PrismaReservation } from '@prisma/client';
 import { Reservation, ReservationStatus } from '../../domain/entities/Reservation';
 import { ReservationRepository } from '../../domain/repositories/ReservationRepository';
 
+import prisma from '../database/prisma';
+
 export class PrismaReservationRepository implements ReservationRepository {
-    private prisma: PrismaClient;
+    private prisma: PrismaClient = prisma;
 
     constructor() {
-        this.prisma = new PrismaClient();
     }
 
-    async create(userId: number, slotId: number, date: Date): Promise<Reservation> {
-        const prismaReservation = await this.prisma.reservation.create({
-            data: {
+    async create(userId: number, slotId: number, date: Date, period: 'AM' | 'PM' = 'AM'): Promise<Reservation> {
+        // Use upsert to handle cases where a CANCELLED reservation exists
+        // The @@unique([date, slotId, period]) constraint on the DB level prevents duplicates.
+        // If we find a record (even if cancelled), we update it to CONFIRMED.
+        const prismaReservation = await this.prisma.reservation.upsert({
+            where: {
+                date_slotId_period: {
+                    date,
+                    slotId,
+                    period
+                }
+            },
+            update: {
+                userId,
+                status: 'CONFIRMED',
+                createdAt: new Date() // Reset creation time to now
+            },
+            create: {
                 userId,
                 slotId,
                 date,
+                period,
                 status: 'CONFIRMED'
             },
             include: { slot: true }
@@ -24,7 +41,10 @@ export class PrismaReservationRepository implements ReservationRepository {
 
     async findByUser(userId: number): Promise<Reservation[]> {
         const prismaReservations = await this.prisma.reservation.findMany({
-            where: { userId },
+            where: {
+                userId,
+                status: { not: 'CANCELLED' }
+            },
             include: { slot: true },
             orderBy: { date: 'asc' }
         });
@@ -42,13 +62,18 @@ export class PrismaReservationRepository implements ReservationRepository {
         return prismaReservations.map(r => this.mapToEntity(r));
     }
 
-    async findByDateAndSlot(date: Date, slotId: number): Promise<Reservation | null> {
+    async findByDateAndSlot(date: Date, slotId: number, period?: 'AM' | 'PM'): Promise<Reservation | null> {
+        const where: any = {
+            date,
+            slotId,
+            status: { not: 'CANCELLED' }
+        };
+        if (period) {
+            where.period = period;
+        }
+
         const prismaReservation = await this.prisma.reservation.findFirst({
-            where: {
-                date,
-                slotId,
-                status: { not: 'CANCELLED' }
-            }
+            where
         });
         return prismaReservation ? this.mapToEntity(prismaReservation) : null;
     }
@@ -84,6 +109,8 @@ export class PrismaReservationRepository implements ReservationRepository {
             prismaReservation.status as ReservationStatus,
             prismaReservation.userId,
             prismaReservation.slotId,
+            prismaReservation.period as 'AM' | 'PM',
+            prismaReservation.createdAt,
             // Pass the included slot if present
             undefined, // User not included usually
             prismaReservation.slot ? {
@@ -94,5 +121,32 @@ export class PrismaReservationRepository implements ReservationRepository {
                 type: prismaReservation.slot.type
             } : undefined
         );
+    }
+
+    async findForDates(dates: Date[]): Promise<Reservation[]> {
+        const prismaReservations = await this.prisma.reservation.findMany({
+            where: {
+                date: { in: dates },
+                status: { not: 'CANCELLED' }
+            },
+            include: { slot: true }
+        });
+        return prismaReservations.map(r => this.mapToEntity(r));
+    }
+
+    async findById(id: number): Promise<Reservation | null> {
+        const prismaReservation = await this.prisma.reservation.findUnique({
+            where: { id },
+            include: { slot: true }
+        });
+
+        if (!prismaReservation) return null;
+        return this.mapToEntity(prismaReservation);
+    }
+
+    async delete(id: number): Promise<void> {
+        await this.prisma.reservation.delete({
+            where: { id }
+        });
     }
 }

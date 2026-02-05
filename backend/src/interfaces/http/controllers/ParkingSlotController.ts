@@ -5,7 +5,7 @@ import { PrismaReservationRepository } from '../../../infrastructure/repositorie
 
 export class ParkingSlotController {
     async getAvailable(req: Request, res: Response) {
-        const { date } = req.query;
+        const { date, period, duration } = req.query;
 
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
@@ -16,7 +16,11 @@ export class ParkingSlotController {
         const useCase = new GetAvailableSlots(parkingSlotRepository, reservationRepository);
 
         try {
-            const slots = await useCase.execute(new Date(date as string));
+            const slots = await useCase.execute(
+                new Date(date as string),
+                period as 'AM' | 'PM',
+                duration ? Number(duration) : 1
+            );
             res.json(slots);
         } catch (error) {
             console.error(error);

@@ -7,19 +7,22 @@ import { PrismaParkingSlotRepository } from '../../../infrastructure/repositorie
 
 export class ReservationController {
     async create(req: Request, res: Response) {
-        const { userId, slotId, date } = req.body;
+        const { userId, slotId, date, needsCharging, duration, period } = req.body;
 
         const reservationRepository = new PrismaReservationRepository();
         const parkingSlotRepository = new PrismaParkingSlotRepository();
         const useCase = new MakeReservation(reservationRepository, parkingSlotRepository);
 
         try {
-            const reservation = await useCase.execute(
+            const reservations = await useCase.execute(
                 Number(userId),
                 Number(slotId),
-                new Date(date)
+                new Date(date),
+                period || 'AM', // Default to AM if not provided
+                duration ? Number(duration) : 1,
+                needsCharging
             );
-            res.json(reservation);
+            res.json(reservations);
         } catch (error: any) {
             console.error(error);
             res.status(400).json({ error: error.message || 'Error creating reservation' });

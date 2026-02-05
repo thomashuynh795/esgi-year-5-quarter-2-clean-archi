@@ -14,8 +14,97 @@ interface Reservation {
     id: number;
     date: string;
     status: string;
-    slot: { name: string };
+    period: 'AM' | 'PM';
+    slot: { id: number; name: string };
 }
+
+interface GroupedReservation {
+    id: string; // Composite ID for key
+    ids: number[]; // All reservation IDs
+    slotName: string;
+    slotId: number;
+    period: 'AM' | 'PM';
+    startDate: string;
+    endDate: string;
+    status: string;
+}
+
+const groupReservations = (reservations: Reservation[]): GroupedReservation[] => {
+    if (reservations.length === 0) return [];
+
+    // Sort by date/slot/period
+    const sorted = [...reservations].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const groups: GroupedReservation[] = [];
+    let currentGroup: GroupedReservation | null = null;
+
+    for (const res of sorted) {
+        if (!currentGroup) {
+            currentGroup = {
+                id: `${res.id}`,
+                ids: [res.id],
+                slotName: res.slot?.name || 'Unknown',
+                slotId: res.slot?.id || 0,
+                period: res.period,
+                startDate: res.date,
+                endDate: res.date,
+                status: res.status
+            };
+        } else {
+            // Check if contiguous: same slot, same period, next working day?
+            // "Next working day" calculation might be complex (skipping weekends).
+            // Simplification: Check if date diff is <= 3 days (to allow Fri-Mon skip) AND same slot AND same period.
+            const lastDate = new Date(currentGroup.endDate);
+            const currentDate = new Date(res.date);
+            const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Allow gap of max 2 days (Fri->Mon is 3 days diff: Fri=5, Sat=6, Sun=0, Mon=1. 3 days.)
+            // Fri(T) -> Mon(T+3days).
+            // Actually diffDays between dates:
+            // Fri 1st. Mon 4th. 4-1 = 3.
+
+            const isSameSlot = res.slot?.id === currentGroup.slotId;
+            const isSamePeriod = res.period === currentGroup.period;
+            const isContiguous = diffDays === 1 || (diffDays <= 3 && lastDate.getDay() === 5 && currentDate.getDay() === 1); // Normal next day OR Fri->Mon
+
+            if (isSameSlot && isSamePeriod && isContiguous) {
+                currentGroup.ids.push(res.id);
+                currentGroup.endDate = res.date;
+                // If any reservation in group is CANCELLED, group status?
+                // Visual preference: show as mixed? Or separate groups for Status change?
+                // Let's separate groups if Status changes.
+                if (res.status !== currentGroup.status) {
+                    groups.push(currentGroup);
+                    currentGroup = {
+                        id: `${res.id}`,
+                        ids: [res.id],
+                        slotName: res.slot?.name || 'Unknown',
+                        slotId: res.slot?.id || 0,
+                        period: res.period,
+                        startDate: res.date,
+                        endDate: res.date,
+                        status: res.status
+                    };
+                }
+            } else {
+                groups.push(currentGroup);
+                currentGroup = {
+                    id: `${res.id}`,
+                    ids: [res.id],
+                    slotName: res.slot?.name || 'Unknown',
+                    slotId: res.slot?.id || 0,
+                    period: res.period,
+                    startDate: res.date,
+                    endDate: res.date,
+                    status: res.status
+                };
+            }
+        }
+    }
+    if (currentGroup) groups.push(currentGroup);
+    return groups;
+};
 
 export default function Dashboard() {
     const { user, login, logout } = useAuth();
@@ -24,6 +113,8 @@ export default function Dashboard() {
     const [myReservations, setMyReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(false);
     const [needsCharging, setNeedsCharging] = useState(false);
+    const [duration, setDuration] = useState(1);
+    const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
 
     useEffect(() => {
         if (!user) {
@@ -32,12 +123,12 @@ export default function Dashboard() {
             fetchMyReservations();
             fetchAvailableSlots();
         }
-    }, [user, date]);
+    }, [user, date, period, duration]);
 
     const fetchAvailableSlots = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`http://localhost:3000/api/slots?date=${date}`);
+            const res = await axios.get(`http://localhost:3000/api/slots?date=${date}&period=${period}&duration=${duration}`);
             setAvailableSlots(res.data);
         } catch (e) {
             console.error(e);
@@ -63,7 +154,9 @@ export default function Dashboard() {
                 userId: user.id,
                 slotId,
                 date: new Date(date).toISOString(),
-                needsCharging
+                needsCharging,
+                duration,
+                period
             });
             alert('Reservation successful!');
             fetchAvailableSlots();
@@ -73,10 +166,20 @@ export default function Dashboard() {
         }
     };
 
-    const handleCheckIn = async (reservationId: number) => {
+    const handleCheckIn = async (reservationIds: number[]) => {
+        // Find the reservation ID that corresponds to TODAY
+        const today = new Date().toISOString().split('T')[0];
+        // We need to look up in myReservations to find the ID for today
+        const todaysReservation = myReservations.find(r => reservationIds.includes(r.id) && new Date(r.date).toISOString().split('T')[0] === today);
+
+        if (!todaysReservation) {
+            alert('No reservation for today to check-in.');
+            return;
+        }
+
         try {
             await axios.post('http://localhost:3000/api/reservations/checkin', {
-                reservationId
+                reservationId: todaysReservation.id
             });
             alert('Check-in confirmed!');
             fetchMyReservations();
@@ -85,13 +188,16 @@ export default function Dashboard() {
         }
     };
 
-    const handleCancel = async (reservationId: number) => {
-        if (!confirm('Are you sure you want to cancel this reservation?')) return;
+    const handleCancel = async (reservationIds: number[]) => {
+        if (!confirm(`Are you sure you want to cancel ${reservationIds.length} day(s)?`)) return;
         try {
-            await axios.post('http://localhost:3000/api/reservations/cancel', {
-                reservationId
-            });
-            alert('Reservation cancelled!');
+            for (const id of reservationIds) {
+                await axios.post('http://localhost:3000/api/reservations/cancel', {
+                    reservationId: id
+                });
+            }
+
+            alert('Reservation(s) cancelled!');
             fetchAvailableSlots();
             fetchMyReservations();
         } catch (e: any) {
@@ -117,6 +223,8 @@ export default function Dashboard() {
             </div>
         )
     }
+
+    const groupedReservations = groupReservations(myReservations);
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -164,6 +272,23 @@ export default function Dashboard() {
                                     />
                                     <span className={needsCharging ? "text-electric font-medium" : "text-slate-300"}>Need Charging ⚡</span>
                                 </label>
+                                <select
+                                    className="select w-full sm:w-auto bg-slate-700 border-slate-600 text-slate-200"
+                                    value={duration}
+                                    onChange={e => setDuration(Number(e.target.value))}
+                                >
+                                    {[1, 2, 3, 4, 5].map(d => (
+                                        <option key={d} value={d}>{d} Day{d > 1 ? 's' : ''}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="select w-full sm:w-auto bg-slate-700 border-slate-600 text-slate-200"
+                                    value={period}
+                                    onChange={e => setPeriod(e.target.value as 'AM' | 'PM')}
+                                >
+                                    <option value="AM">Morning (AM)</option>
+                                    <option value="PM">Afternoon (PM)</option>
+                                </select>
                                 <input
                                     className="input w-full sm:w-auto"
                                     type="date"
@@ -223,14 +348,16 @@ export default function Dashboard() {
                             <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                             My Reservations
                         </h2>
-                        {myReservations.length === 0 ? (
+                        {groupedReservations.length === 0 ? (
                             <div className="text-center py-10 text-slate-500 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
                                 <p>No active reservations.</p>
                             </div>
                         ) : (
-                            <ul className="space-y-3">
-                                {myReservations.map(res => {
-                                    const isToday = new Date(res.date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                            <ul className="space-y-3 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
+                                {groupedReservations.map(group => {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    const hasToday = myReservations.some(r => group.ids.includes(r.id) && new Date(r.date).toISOString().split('T')[0] === today && r.status === 'CONFIRMED');
+
                                     const statusColors: any = {
                                         'CONFIRMED': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
                                         'OCCUPIED': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
@@ -238,35 +365,56 @@ export default function Dashboard() {
                                     };
 
                                     return (
-                                        <li key={res.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 flex justify-between items-center hover:border-slate-600 transition-colors">
-                                            <div>
-                                                <div className="font-bold text-lg text-white">{res.slot?.name}</div>
-                                                <div className="text-sm text-slate-400 mt-1 flex items-center gap-1">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                                    {new Date(res.date).toLocaleDateString()}
+                                        <li key={group.id} className="bg-slate-800/50 rounded-lg border border-slate-700 hover:border-slate-600 transition-all flex flex-col p-0 overflow-hidden">
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <div className="font-bold text-lg text-white flex gap-2 items-center">
+                                                            {group.slotName}
+                                                            <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-normal">{group.period}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${statusColors[group.status] || 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                                                        {group.status}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-4 text-sm text-slate-400 bg-slate-900/20 p-2 rounded border border-slate-800/50">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] uppercase tracking-wide opacity-50">From</span>
+                                                        <span className="font-medium text-slate-200">{new Date(group.startDate).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="h-6 w-px bg-slate-700/50"></div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] uppercase tracking-wide opacity-50">To</span>
+                                                        <span className="font-medium text-slate-200">{new Date(group.endDate).toLocaleDateString()}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                <span className={`badge border ${statusColors[res.status] || 'bg-slate-700'}`}>
-                                                    {res.status}
-                                                </span>
-                                                {isToday && res.status === 'CONFIRMED' && (
-                                                    <button
-                                                        onClick={() => handleCheckIn(res.id)}
-                                                        className="btn btn-success text-xs py-1 px-3 shadow-lg shadow-emerald-500/20"
-                                                    >
-                                                        Check-in
-                                                    </button>
-                                                )}
-                                                {res.status !== 'CANCELLED' && (
-                                                    <button
-                                                        onClick={() => handleCancel(res.id)}
-                                                        className="btn btn-danger text-xs py-1 px-3 shadow-lg shadow-red-500/20 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                )}
-                                            </div>
+
+                                            {/* Footer Actions */}
+                                            {(hasToday || group.status !== 'CANCELLED') && (
+                                                <div className="bg-slate-900/30 p-2 flex gap-2 border-t border-slate-700/50">
+                                                    {hasToday && (
+                                                        <button
+                                                            onClick={() => handleCheckIn(group.ids)}
+                                                            className="flex-1 btn btn-success text-xs py-2 shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                            I'm Here
+                                                        </button>
+                                                    )}
+                                                    {group.status !== 'CANCELLED' && group.status !== 'OCCUPIED' && (
+                                                        <button
+                                                            onClick={() => handleCancel(group.ids)}
+                                                            className="flex-1 btn btn-danger text-xs py-2 shadow-lg shadow-red-500/10 bg-red-500/5 text-red-500 border border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-2"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                            Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </li>
                                     );
                                 })}

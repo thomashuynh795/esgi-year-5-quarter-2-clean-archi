@@ -3,7 +3,8 @@ import { User } from './User';
 
 export enum ReservationStatus {
     CONFIRMED = 'CONFIRMED',
-    CANCELLED = 'CANCELLED'
+    CANCELLED = 'CANCELLED',
+    OCCUPIED = 'OCCUPIED'
 }
 
 export class Reservation {
@@ -13,6 +14,8 @@ export class Reservation {
         public readonly status: ReservationStatus,
         public readonly userId: number,
         public readonly slotId: number,
+        public readonly period: 'AM' | 'PM',
+        public readonly createdAt: Date,
         public readonly user?: User,
         public readonly slot?: ParkingSlot
     ) { }
