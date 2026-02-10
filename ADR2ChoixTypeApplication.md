@@ -1,15 +1,27 @@
 ## ADR Choix du type d'application
 
 ### Contexte:
-L'application est destinée à un public non technique, cette application doit être simple, pratique et adaptée à leurs besoins spécifiques.
-pour se faire on a donc le choix entre une application à télécharger sur les stores ou un site web 
+
+Le système doit être accessible à tous les collaborateurs, qu'ils soient au bureau devant leur ordinateur ou dans leur voiture à l'entrée du parking. 
+Le public n'est pas nécessairement technophile. Nous devons choisir entre une application native (iOS/Android) ou une application Web.
 
 ### Décision:
-Pour un public non technique, l'étape de téléchargement sur l'App Store ou le Play Store peut être une barrière ou meme juste par manque despace disque, 
-et pour le web ca peut etre moin  pratique en déplacement, dans ce fait on a choisis une application web et mobile.
-Vu que c'est un outil pour les collaborateurs d'une entreprise, on peut avoir l'application sous format web et mobile.
+
+Nous optons pour une Application Web Responsive (PWA - Progressive Web App).
+Ce choix permet d'avoir une URL unique accessible depuis n'importe quel navigateur, tout en offrant une expérience proche du mobile .
 
 ### Conséquences:
 
-On s'adapte à l'utilisateur et offre une utilisation simple et plus de chances que l'application soit utilisée car elle est accessible par tout .
-Nous couvrons 100% des usages collaborateurs (bureau et mobilité).
+#### Positives (+) :
+
+Accessibilité maximale : Aucun téléchargement requis, couverture de 100% des appareils (Windows, Mac, iOS, Android).
+
+Déploiement continu : Les corrections de bugs sont visibles immédiatement par tous les utilisateurs dès la mise en ligne.
+
+Coût réduit : Un seul code source à maintenir au lieu de deux (Web + Mobile).
+
+#### Négatives (-) :
+
+Dépendance au réseau : Nécessite une connexion internet (mais c'est aussi le cas pour une application native de parking qui doit interroger l'API).
+
+ 

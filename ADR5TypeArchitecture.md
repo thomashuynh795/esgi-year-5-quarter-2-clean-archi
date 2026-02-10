@@ -2,12 +2,27 @@
 
 ### Contexte
 
-Afin d'enregistrer et de fournir toutes les données du système de réservation de parking, et afin d'appliquer les règles métier, une API est nécessaire.
+L'application doit gérer des fonctionnalités cohérentes et interdépendantes (utilisateurs, places, réservations).
+Nous devons choisir entre un monolithe (un seul bloc de code) et des microservices (plusieurs services indépendants).
 
 ### Décision
 
-Pour cette API nous avons décidé d'adopter une architecture monolithique plutôt que des microservices après avoir mesuré la petite envergure du système et par souci de simplicité. Les microservices ajouteraient de la complexité inutilement sans apporter de vraie valeur même sur le long terme.
+Nous choisissons une Architecture Monolithique.
+Compte tenu de la taille de l'équipe et de la portée du projet (parking d'entreprise), la complexité opérationnelle des microservices (gestion du réseau, déploiements multiples, latence) n'est pas justifiée.
 
 ### Conséquences
 
-Un système plus simple mais qui peut être plus rigide si on ajoute énormément de fonctionnalités.
+ 
+#### Positives (+) :
+
+Simplicité de développement : Tout le code est au même endroit, ce qui facilite le débogage et les tests de bout en bout  .
+
+Déploiement facilité : Un seul artefact à déployer sur le serveur.
+
+Performance : Les appels entre les différentes parties du système se font en mémoire, sans passer par le réseau (pas de latence).
+
+Coût d'infrastructure : Moins de serveurs et de ressources nécessaires pour faire tourner l'application.
+
+#### Négatives (-) :
+
+Scalabilité globale : On ne peut pas scaler uniquement la partie "Réservation" sans scaler toute l'application (mais pour un parking, le trafic restera maîtrisé).

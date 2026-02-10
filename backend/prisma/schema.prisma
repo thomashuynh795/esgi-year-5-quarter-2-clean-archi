@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id      Int    @id @default(autoincrement())
+  content String
+}
+
+enum Role {
+  EMPLOYEE
+  SECRETARY
+  MANAGER
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  role         Role          @default(EMPLOYEE)
+  reservations Reservation[]
+}
+
+enum SlotType {
+  STANDARD
+  ELECTRIC
+}
+
+model ParkingSlot {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique // e.g., "A01"
+  row          String        // "A", "B", ...
+  number       Int           // 1 to 10
+  type         SlotType
+  reservations Reservation[]
+}
+
+enum Period {
+  AM
+  PM
+}
+
+model Reservation {
+  id        Int         @id @default(autoincrement())
+  date      DateTime
+  period    Period      @default(AM)
+  status    String      @default("CONFIRMED") // CONFIRMED, CANCELLED
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id])
+  slotId    Int
+  slot      ParkingSlot @relation(fields: [slotId], references: [id])
+  createdAt DateTime    @default(now())
+
+  @@unique([date, slotId, period]) // A slot can only be booked once per period per day
+  @@index([date])
+}
