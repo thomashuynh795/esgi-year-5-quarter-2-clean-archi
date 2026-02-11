@@ -32,7 +32,7 @@ export class ErrorHandlerService {
 
         switch (error.name) {
             case 'NotFoundException':
-                
+
                 return {
                     statusCode: HttpStatus.NOT_FOUND,
                     message: error.message,

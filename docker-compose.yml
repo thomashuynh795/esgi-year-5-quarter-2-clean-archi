@@ -1,34 +1,39 @@
+
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
+    restart: always
     environment:
-      POSTGRES_USER: user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: parking_db
+      POSTGRES_DB: parking
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  backend:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql://user:password@postgres:5432/parking_db
-      PORT: 3000
+  api:
+    build:
+      context: ./api-1
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/parking?schema=public
+      JWT_SECRET: supersecretkey
+      PORT: 8080
     depends_on:
       - postgres
-    # Wait for postgres to be ready and run migrations
-    command: >
-      sh -c "npx prisma db push && node dist/interfaces/http/server.js"
+    command: sh -c "npx prisma db push && npm run seed && node dist/main.js"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "5173:80"
+      - "80:80"
     depends_on:
-      - backend
+      - api
 
 volumes:
   postgres_data:

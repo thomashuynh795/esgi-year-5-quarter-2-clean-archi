@@ -24,15 +24,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const login = async (email: string) => {
         // Call backend to login
         try {
-            const response = await fetch('http://localhost:3000/api/login', {
+            const response = await fetch('http://localhost:8080/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
+                body: JSON.stringify({ email: email, password: 'password123' }) // Hardcoded password for demo as frontend only asks for email
             });
             if (response.ok) {
-                const userData = await response.json();
-                setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData));
+                const data = await response.json();
+                setUser(data.user);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('token', data.access_token);
             } else {
                 alert('Login failed');
             }
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
     };
 
     return (

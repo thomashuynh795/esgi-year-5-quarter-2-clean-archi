@@ -108,7 +108,7 @@ export const useDashboardController = () => {
     const bookSlot = async (slotId: number) => {
         if (!user) return;
         try {
-            await ParkingService.createReservation(user.id, slotId, new Date(date).toISOString(), period, duration, needsCharging);
+            await ParkingService.createReservation(slotId, new Date(date).toISOString(), period, duration, needsCharging);
             alert('Reservation successful!');
             fetchAvailableSlots();
             fetchMyReservations();

@@ -7,6 +7,9 @@ import { ErrorHandlerService } from './shared/error-handler/error-handler.servic
 import { SharedModule } from './shared/shared.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HealthCheckModule } from './modules/health-check/health-check.module';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ParkingModule } from './modules/parking/parking.module';
 @Module({
     imports: [
         PrismaModule,
@@ -20,6 +23,9 @@ import { HealthCheckModule } from './modules/health-check/health-check.module';
         }),
         SharedModule,
         HealthCheckModule,
+        UsersModule,
+        AuthModule,
+        ParkingModule,
         MailerModule.forRootAsync({
             useFactory: () => ({
                 transport: {
