@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  SECRETARY
+}
+
+enum VehicleType {
+  NONE
+  THERMAL
+  HYBRID
+  ELECTRIC
+}
+
+enum ReservationSlot {
+  AM
+  PM
+}
+
+enum ReservationStatus {
+  BOOKED
+  CHECKED_IN
+  CANCELLED
+  RELEASED
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  role         UserRole    @default(EMPLOYEE)
+  vehicleType  VehicleType @default(NONE)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations      Reservation[]
+  checkIns          CheckIn[]
+  auditEvents       AuditEvent[]       @relation("ActorAuditEvents")
+  reservationEvents ReservationEvent[]
+}
+
+model ParkingSpot {
+  id         String  @id
+  row        String
+  number     Int
+  hasCharger Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+  checkIns     CheckIn[]
+
+  @@index([row])
+  @@index([hasCharger])
+}
+
+model Reservation {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  spotId String
+
+  date   DateTime
+  slot   ReservationSlot
+  status ReservationStatus @default(BOOKED)
+
+  needsCharger Boolean @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cancelledAt DateTime?
+  releasedAt  DateTime?
+
+  checkIn CheckIn?
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  spot ParkingSpot @relation(fields: [spotId], references: [id], onDelete: Restrict)
+
+  events ReservationEvent[]
+
+  @@unique([spotId, date, slot])
+  @@unique([userId, date, slot])
+  @@index([userId, date])
+  @@index([spotId, date])
+  @@index([status, date])
+}
+
+model CheckIn {
+  id String @id @default(uuid()) @db.Uuid
+
+  reservationId String @unique @db.Uuid
+  userId        String @db.Uuid
+  spotId        String
+
+  checkedInAt DateTime @default(now())
+  source      String?
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  spot        ParkingSpot @relation(fields: [spotId], references: [id], onDelete: Restrict)
+
+  @@index([spotId, checkedInAt])
+  @@index([userId, checkedInAt])
+}
+
+model ReservationEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  reservationId String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  type    String
+  payload Json?
+
+  actorId String? @db.Uuid
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model AuditEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+
+  action   String
+  entity   String
+  entityId String
+  payload  Json?
+
+  actorId String? @db.Uuid
+  actor   User?   @relation("ActorAuditEvents", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+}
