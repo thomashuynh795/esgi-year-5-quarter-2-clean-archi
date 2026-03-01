@@ -23,10 +23,18 @@ export default function Navbar() {
         <div className="flex items-center justify-between gap-6">
           <button
             type="button"
-            onClick={() => navigate(hasRole("SECRETARY") ? "/admin" : hasRole("MANAGER") ? "/dashboard" : "/parking")}
+            onClick={() =>
+              navigate(
+                hasRole("SECRETARY")
+                  ? "/admin"
+                  : hasRole("MANAGER")
+                    ? "/dashboard"
+                    : "/parking",
+              )
+            }
             className="font-serif text-2xl font-semibold tracking-tight text-stone-900"
           >
-            ParkOps
+            TTM Parking
           </button>
           <nav className="flex flex-wrap gap-2">
             {links.map((link) => {
