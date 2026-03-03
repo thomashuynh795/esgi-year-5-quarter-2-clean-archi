@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import ParkingGrid from "../components/ParkingGrid";
 import CreateReservationModal from "../components/CreateReservationModal";
 import { useAuth } from "../context/AuthContext";
-import { buildMockParkingSpots, buildMockReservationHistory, buildMockReservations } from "../domain/mock";
-import type { ParkingSpot, ParkingSpotViewModel, ReservationDraft, ReservationHistoryEntry, ReservationViewModel } from "../domain/models";
+import { buildMockParkingSpots, buildMockReservations } from "../domain/mock";
+import type { DailyOccupancyViewModel, ParkingSpot, ParkingSpotViewModel, ReservationDraft, ReservationViewModel } from "../domain/models";
 import { formatDateInput, getSpotStatus, isElectricRow } from "../domain/parkingRules";
 import { ParkingService } from "../services/ParkingService";
 import { ApiError } from "../services/api";
@@ -26,21 +26,32 @@ export default function Parking() {
     buildInitialDraft(user?.vehicleType === "HYBRID" || user?.vehicleType === "ELECTRIC" ? user.vehicleType : "THERMAL"),
   );
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
-  const [history, setHistory] = useState<ReservationHistoryEntry[]>([]);
+  const [occupancy, setOccupancy] = useState<DailyOccupancyViewModel>({
+    date: formatDateInput(new Date()),
+    spots: buildMockParkingSpots().map((spot) => ({
+      spotId: spot.id,
+      row: spot.row,
+      number: spot.number,
+      hasCharger: spot.hasCharger,
+      isActive: spot.isActive,
+      isAvailableAM: true,
+      isAvailablePM: true,
+    })),
+  });
   const [myReservations, setMyReservations] = useState<ReservationViewModel[]>([]);
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedHistory = useMemo(
-    () => history.find((entry) => entry.date === draft.startDate && entry.slot === draft.slot),
-    [draft.slot, draft.startDate, history],
-  );
-
   const reservedSpotIds = useMemo(
-    () => new Set(selectedHistory?.usedSpotIds ?? []),
-    [selectedHistory],
+    () =>
+      new Set(
+        occupancy.spots
+          .filter((spot) => (draft.slot === "AM" ? !spot.isAvailableAM : !spot.isAvailablePM))
+          .map((spot) => spot.spotId),
+      ),
+    [draft.slot, occupancy.spots],
   );
 
   const myReservedSpotIds = useMemo(
@@ -61,6 +72,7 @@ export default function Parking() {
   const viewSpots = useMemo<ParkingSpotViewModel[]>(
     () =>
       spots.map((spot) => {
+        const dailyOccupancy = occupancy.spots.find((entry) => entry.spotId === spot.id);
         const status = getSpotStatus({
           spot,
           draft,
@@ -75,14 +87,38 @@ export default function Parking() {
           unavailable: "Indisponible",
         };
 
+        const isAvailableAM = dailyOccupancy?.isAvailableAM ?? true;
+        const isAvailablePM = dailyOccupancy?.isAvailablePM ?? true;
+        const isThermalVehicle = draft.vehicleType === "THERMAL";
+
+        let tileTone: ParkingSpotViewModel["tileTone"] | undefined;
+        let badgeLabel: ParkingSpotViewModel["badgeLabel"];
+
+        if (isThermalVehicle && spot.hasCharger) {
+          tileTone = "dashboardBlocked";
+        } else if (isAvailableAM && isAvailablePM) {
+          tileTone = "dashboardAvailable";
+        } else if (isAvailableAM && !isAvailablePM) {
+          tileTone = "dashboardPartial";
+          badgeLabel = "AM";
+        } else if (!isAvailableAM && isAvailablePM) {
+          tileTone = "dashboardPartial";
+          badgeLabel = "PM";
+        } else {
+          tileTone = "dashboardUnavailable";
+        }
+
         return {
           ...spot,
           status,
           statusLabel: statusLabelMap[status],
           typeLabel: isElectricRow(spot.row) ? "Electric" : "Standard",
+          tileTone,
+          badgeLabel,
+          hideChargerBadge: Boolean(tileTone),
         };
       }),
-    [draft, myReservedSpotIds, reservedSpotIds, spots],
+    [draft, myReservedSpotIds, occupancy.spots, reservedSpotIds, spots],
   );
 
   const selectedSpot = useMemo(
@@ -94,23 +130,41 @@ export default function Parking() {
     setLoading(true);
     setErrorMessage(null);
 
-    const historyParams = { start: draft.startDate, end: draft.startDate, slot: draft.slot };
-
     try {
-      const [spotResults, historyResults, reservationResults] = await Promise.all([
+      const [spotResults, occupancyResults, reservationResults] = await Promise.all([
         ParkingService.getAllSpots().catch(() => buildMockParkingSpots()),
-        ParkingService.getReservationHistory(historyParams).catch(() =>
-          buildMockReservationHistory(historyParams.start, historyParams.end),
-        ),
+        ParkingService.getDailyOccupancy(draft.startDate).catch(() => ({
+          date: draft.startDate,
+          spots: buildMockParkingSpots().map((spot) => ({
+            spotId: spot.id,
+            row: spot.row,
+            number: spot.number,
+            hasCharger: spot.hasCharger,
+            isActive: spot.isActive,
+            isAvailableAM: true,
+            isAvailablePM: true,
+          })),
+        })),
         ParkingService.getMyReservations().catch(() => buildMockReservations()),
       ]);
 
       setSpots(spotResults);
-      setHistory(historyResults);
+      setOccupancy(occupancyResults);
       setMyReservations(reservationResults);
     } catch (error) {
       setSpots(buildMockParkingSpots());
-      setHistory(buildMockReservationHistory(historyParams.start, historyParams.end));
+      setOccupancy({
+        date: draft.startDate,
+        spots: buildMockParkingSpots().map((spot) => ({
+          spotId: spot.id,
+          row: spot.row,
+          number: spot.number,
+          hasCharger: spot.hasCharger,
+          isActive: spot.isActive,
+          isAvailableAM: true,
+          isAvailablePM: true,
+        })),
+      });
       setMyReservations(buildMockReservations());
       setErrorMessage(
         error instanceof ApiError
@@ -215,10 +269,11 @@ export default function Parking() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">Disponible</span>
-            <span className="rounded-full bg-sky-100 px-3 py-2 text-sky-800">Reserve par moi</span>
-            <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">Reservee</span>
-            <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">Indisponible</span>
+            <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">Vert: AM + PM dispo</span>
+            <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">AM: matin dispo</span>
+            <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">PM: apres-midi dispo</span>
+            <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">Rouge: complet</span>
+            <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">Gris: borne non compatible</span>
           </div>
         </div>
       </section>

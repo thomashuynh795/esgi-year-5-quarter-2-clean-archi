@@ -1,5 +1,6 @@
 import type {
   ApiReservationDto,
+  DailyOccupancyViewModel,
   ParkingSpot,
   ReservationHistoryEntry,
   ReservationViewModel,
@@ -105,7 +106,18 @@ export const ParkingService = {
     slot?: ReservationSlot;
   }): Promise<ReservationHistoryEntry[]> {
     const response = await api.get<ReservationHistoryEntry[]>("/reservations/history", {
-      params,
+      params: {
+        start: params.start,
+        end: params.end,
+        period: params.slot,
+      },
+    });
+    return response.data;
+  },
+
+  async getDailyOccupancy(date: string): Promise<DailyOccupancyViewModel> {
+    const response = await api.get<DailyOccupancyViewModel>("/reservations/daily-occupancy", {
+      params: { date },
     });
     return response.data;
   },

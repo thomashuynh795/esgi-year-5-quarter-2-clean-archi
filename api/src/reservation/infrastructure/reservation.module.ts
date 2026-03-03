@@ -28,6 +28,7 @@ import { CancelReservationUseCase } from '../application/cancel-reservation/canc
 import { GetReservationsForMonthUseCase } from '../application/get-reservations-for-month/get-reservations-for-month.use-case';
 import { GetAvailableSlotsUseCase } from '../application/get-available-slots/get-available-slots.use-case';
 import { GetReservationHistoryUseCase } from '../application/get-reservation-history/get-reservation-history.use-case';
+import { GetDailyOccupancyUseCase } from '../application/get-daily-occupancy/get-daily-occupancy.use-case';
 import { CheckInUseCase } from '../application/check-in/check-in.use-case';
 import { CheckInByQrUseCase } from '../application/check-in/check-in-by-qr.use-case';
 import { UpdateReservationUseCase } from '../application/update-reservation/update-reservation.use-case';
@@ -133,6 +134,18 @@ import { ReservationEventPrismaAdapter } from './persistence/reservation-event-p
         parkingSpotRepository: ParkingSpotRepository,
       ) =>
         new GetReservationHistoryUseCase(
+          reservationRepository,
+          parkingSpotRepository,
+        ),
+      inject: [RESERVATION_REPOSITORY, PARKING_SPOT_REPOSITORY],
+    },
+    {
+      provide: GetDailyOccupancyUseCase,
+      useFactory: (
+        reservationRepository: ReservationRepository,
+        parkingSpotRepository: ParkingSpotRepository,
+      ) =>
+        new GetDailyOccupancyUseCase(
           reservationRepository,
           parkingSpotRepository,
         ),

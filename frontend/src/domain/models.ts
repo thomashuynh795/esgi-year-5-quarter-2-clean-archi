@@ -8,6 +8,15 @@ export const RESERVATION_SLOTS = ["AM", "PM"] as const;
 export type ReservationSlot = (typeof RESERVATION_SLOTS)[number];
 
 export type SpotStatus = "available" | "reserved" | "reservedByMe" | "unavailable";
+export type ParkingSpotTileTone =
+  | "available"
+  | "reserved"
+  | "reservedByMe"
+  | "unavailable"
+  | "dashboardAvailable"
+  | "dashboardPartial"
+  | "dashboardUnavailable"
+  | "dashboardBlocked";
 
 export interface AuthUser {
   id: string;
@@ -31,6 +40,9 @@ export interface ParkingSpotViewModel extends ParkingSpot {
   status: SpotStatus;
   statusLabel: string;
   typeLabel: "Electric" | "Standard";
+  tileTone?: ParkingSpotTileTone;
+  badgeLabel?: "AM" | "PM";
+  hideChargerBadge?: boolean;
 }
 
 export interface ReservationViewModel {
@@ -49,6 +61,21 @@ export interface ReservationHistoryEntry {
   slot: ReservationSlot;
   usedSpotIds: string[];
   freeSpotIds: string[];
+}
+
+export interface DailyOccupancySpot {
+  spotId: string;
+  row: string;
+  number: number;
+  hasCharger: boolean;
+  isActive: boolean;
+  isAvailableAM: boolean;
+  isAvailablePM: boolean;
+}
+
+export interface DailyOccupancyViewModel {
+  date: string;
+  spots: DailyOccupancySpot[];
 }
 
 export interface ReservationDraft {

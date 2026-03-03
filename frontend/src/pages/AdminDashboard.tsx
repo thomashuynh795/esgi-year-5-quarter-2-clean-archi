@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import ParkingGrid from "../components/ParkingGrid";
 import { useAuth } from "../context/AuthContext";
 import { buildMockParkingSpots } from "../domain/mock";
-import type { AuthUser, ParkingSpot, ReservationSlot, ReservationViewModel, UserRole } from "../domain/models";
-import { PARKING_ROWS, createSpotId, formatDateInput } from "../domain/parkingRules";
+import type { AuthUser, ParkingSpot, ParkingSpotViewModel, ReservationSlot, ReservationViewModel, UserRole } from "../domain/models";
+import { formatDateInput } from "../domain/parkingRules";
 import { AdminService } from "../services/AdminService";
 import { ParkingService } from "../services/ParkingService";
 import { ApiError } from "../services/api";
@@ -115,6 +116,91 @@ export default function AdminDashboard() {
       })
       .sort((left, right) => left.row.localeCompare(right.row) || left.number - right.number);
   }, [allReservations, historyDate, spots]);
+
+  const occupancyViewSpots = useMemo<ParkingSpotViewModel[]>(() => {
+    const activeVehicleType = selectedUser?.vehicleType ?? user?.vehicleType;
+    const isThermalVehicle = activeVehicleType === "THERMAL";
+
+    return occupancyCells.map((cell) => {
+      if (isThermalVehicle && cell.hasCharger) {
+        return {
+          id: cell.spotId,
+          row: cell.row,
+          number: cell.number,
+          hasCharger: cell.hasCharger,
+          isActive: true,
+          status: "unavailable",
+          statusLabel: "Borne reservee aux vehicules elec./hybrides",
+          typeLabel: cell.hasCharger ? "Electric" : "Standard",
+          tileTone: "dashboardBlocked",
+          hideChargerBadge: true,
+        };
+      }
+
+      const amAvailable = !cell.am;
+      const pmAvailable = !cell.pm;
+
+      if (amAvailable && pmAvailable) {
+        return {
+          id: cell.spotId,
+          row: cell.row,
+          number: cell.number,
+          hasCharger: cell.hasCharger,
+          isActive: true,
+          status: "available",
+          statusLabel: "Matin et apres-midi disponibles",
+          typeLabel: cell.hasCharger ? "Electric" : "Standard",
+          tileTone: "dashboardAvailable",
+          hideChargerBadge: true,
+        };
+      }
+
+      if (amAvailable && !pmAvailable) {
+        return {
+          id: cell.spotId,
+          row: cell.row,
+          number: cell.number,
+          hasCharger: cell.hasCharger,
+          isActive: true,
+          status: "available",
+          statusLabel: "Matin disponible, apres-midi reserve",
+          typeLabel: cell.hasCharger ? "Electric" : "Standard",
+          tileTone: "dashboardPartial",
+          badgeLabel: "AM",
+          hideChargerBadge: true,
+        };
+      }
+
+      if (!amAvailable && pmAvailable) {
+        return {
+          id: cell.spotId,
+          row: cell.row,
+          number: cell.number,
+          hasCharger: cell.hasCharger,
+          isActive: true,
+          status: "available",
+          statusLabel: "Matin reserve, apres-midi disponible",
+          typeLabel: cell.hasCharger ? "Electric" : "Standard",
+          tileTone: "dashboardPartial",
+          badgeLabel: "PM",
+          hideChargerBadge: true,
+        };
+      }
+
+      return {
+        id: cell.spotId,
+        row: cell.row,
+        number: cell.number,
+        hasCharger: cell.hasCharger,
+        isActive: true,
+        status: "reserved",
+        statusLabel: "Aucune disponibilite sur la journee",
+        typeLabel: cell.hasCharger ? "Electric" : "Standard",
+        tileTone: "dashboardUnavailable",
+        hideChargerBadge: true,
+      };
+    });
+  }, [occupancyCells, selectedUser?.vehicleType, user?.vehicleType]);
 
   async function loadUserReservations(userId: string) {
     try {
@@ -617,7 +703,7 @@ export default function AdminDashboard() {
             <div className="text-sm uppercase tracking-[0.35em] text-stone-500">Historique journalier</div>
             <h2 className="mt-2 text-2xl font-semibold text-stone-900">Occupation detaillee des 60 places</h2>
             <p className="mt-2 text-sm text-stone-600">
-              Naviguez jour par jour. Chaque tuile affiche la reservation du matin et de l'apres-midi.
+              Naviguez jour par jour. Les tuiles suivent les 5 etats AM/PM du dashboard.
             </p>
           </div>
 
@@ -642,81 +728,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          {PARKING_ROWS.map((row) => {
-            const rowCells = occupancyCells.filter((cell) => cell.row === row);
+        <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium">
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">Vert: AM + PM dispo</span>
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">AM: matin dispo</span>
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">PM: apres-midi dispo</span>
+          <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">Rouge: complet</span>
+          <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">Gris: borne non compatible</span>
+        </div>
 
-            return (
-              <section key={row} className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-serif text-lg font-semibold text-stone-900">Rangee {row}</h3>
-                    <p className="text-xs text-stone-600">
-                      {row === "A" || row === "F"
-                        ? "Places avec bornes de charge"
-                        : "Places standards"}
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-600">
-                    {createSpotId(row, 1)} - {createSpotId(row, 10)}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                  {rowCells.map((cell) => {
-                    const empty = !cell.am && !cell.pm;
-                    return (
-                      <article
-                        key={cell.spotId}
-                        className={`rounded-2xl border p-3 ${
-                          empty ? "border-stone-200 bg-white" : "border-amber-200 bg-amber-50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-sm font-semibold text-stone-900">{cell.spotId}</div>
-                          {cell.hasCharger && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800">
-                              EV
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-3 grid gap-2">
-                          <div className="rounded-xl bg-white/80 p-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                              Matin
-                            </div>
-                            {cell.am ? (
-                              <>
-                                <div className="mt-1 text-sm font-medium text-stone-900">{cell.am.userName}</div>
-                                <div className="text-[11px] text-stone-600">{cell.am.userEmail}</div>
-                              </>
-                            ) : (
-                              <div className="mt-1 text-sm text-stone-400">Libre</div>
-                            )}
-                          </div>
-
-                          <div className="rounded-xl bg-white/80 p-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                              Apres-midi
-                            </div>
-                            {cell.pm ? (
-                              <>
-                                <div className="mt-1 text-sm font-medium text-stone-900">{cell.pm.userName}</div>
-                                <div className="text-[11px] text-stone-600">{cell.pm.userEmail}</div>
-                              </>
-                            ) : (
-                              <div className="mt-1 text-sm text-stone-400">Libre</div>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
+        <div className="mt-6">
+          <ParkingGrid spots={occupancyViewSpots} />
         </div>
       </section>
     </div>

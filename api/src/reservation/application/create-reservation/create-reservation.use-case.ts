@@ -86,21 +86,6 @@ export class CreateReservationUseCase {
 
     this.assertDurationAllowed(dates, user.roles);
 
-    if (!user.roles.includes(UserRole.Manager)) {
-      const alreadyReservedDays =
-        await this.reservationRepository.countDistinctActiveDatesFrom({
-          userId: user.id,
-          from: today,
-        });
-
-      const requestedWorkingDays = dates.length;
-      if (alreadyReservedDays + requestedWorkingDays > 5) {
-        throw new ForbiddenException(
-          'Employees can reserve up to 5 working days in total (upcoming).',
-        );
-      }
-    }
-
     const createdIds: string[] = [];
 
     for (const date of dates) {

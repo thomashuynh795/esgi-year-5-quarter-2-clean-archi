@@ -5,7 +5,7 @@ import ParkingSpotTile from "./ParkingSpotTile";
 interface ParkingGridProps {
   spots: ParkingSpotViewModel[];
   selectedSpotId?: string;
-  onSpotClick: (spotId: string) => void;
+  onSpotClick?: (spotId: string) => void;
 }
 
 export default function ParkingGrid({ spots, selectedSpotId, onSpotClick }: ParkingGridProps) {

@@ -32,6 +32,7 @@ import { UpdateReservationUseCase } from '../../application/update-reservation/u
 import { GetReservationHistoryUseCase } from '../../application/get-reservation-history/get-reservation-history.use-case';
 import { GetReservationHistoryQuery } from '../../application/get-reservation-history/get-reservation-history.query';
 import { UpdateReservationRequestDto } from './dtos/update-reservation.request.dto';
+import { GetDailyOccupancyUseCase } from '../../application/get-daily-occupancy/get-daily-occupancy.use-case';
 
 @Controller('reservations')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,6 +47,7 @@ export class ReservationController {
     private readonly checkInByQrUseCase: CheckInByQrUseCase,
     private readonly updateReservationUseCase: UpdateReservationUseCase,
     private readonly getReservationHistoryUseCase: GetReservationHistoryUseCase,
+    private readonly getDailyOccupancyUseCase: GetDailyOccupancyUseCase,
   ) {}
 
   @Post()
@@ -141,6 +143,7 @@ export class ReservationController {
     @Query('start') start: string,
     @Query('end') end: string,
     @Query('period') period?: ReservationSlot,
+    @Query('slot') slot?: ReservationSlot,
   ) {
     if (!start || !end) {
       throw new HttpException(
@@ -152,10 +155,23 @@ export class ReservationController {
     const query = new GetReservationHistoryQuery(
       new Date(start),
       new Date(end),
-      period,
+      period ?? slot,
     );
 
     return this.getReservationHistoryUseCase.execute(query);
+  }
+
+  @Get('daily-occupancy')
+  @Roles(UserRole.Employee, UserRole.Manager, UserRole.Secretary)
+  public async getDailyOccupancy(@Query('date') date: string) {
+    if (!date) {
+      throw new HttpException(
+        'Missing required query parameter: date',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.getDailyOccupancyUseCase.execute(new Date(date));
   }
 
   @Delete(':id')
