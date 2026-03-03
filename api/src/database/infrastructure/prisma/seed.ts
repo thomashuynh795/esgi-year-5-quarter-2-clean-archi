@@ -38,6 +38,10 @@ function dateAtMidnightUTC(date: Date): Date {
   );
 }
 
+function addDays(base: Date, days: number): Date {
+  return dateAtMidnightUTC(new Date(base.getTime() + days * 24 * 3600 * 1000));
+}
+
 async function upsertUser(userToCreate: {
   email: string;
   roles: UserRole[];
@@ -199,7 +203,7 @@ async function main() {
     password: 'password',
   });
 
-  await upsertUser({
+  const manager2 = await upsertUser({
     email: 'manager2@mail.net',
     roles: [UserRole.MANAGER, UserRole.SECRETARY],
     firstName: 'Alice',
@@ -285,21 +289,93 @@ async function main() {
     needsCharger: true,
   });
 
-  for (let i = 0; i < 10; i++) {
-    const date = dateAtMidnightUTC(
-      new Date(now.getTime() + i * 24 * 3600 * 1000),
-    );
+  for (let i = 1; i <= 30; i++) {
+    const pastDate = addDays(d0, -i);
+
+    const e1Checked = i % 2 === 0;
+    await createReservation({
+      userId: employee1.id,
+      spotId: 'C02',
+      date: pastDate,
+      slot: ReservationSlot.AM,
+      needsCharger: false,
+      status: e1Checked
+        ? ReservationStatus.CHECKED_IN
+        : ReservationStatus.BOOKED,
+      checkIn: e1Checked,
+    });
+
+    const released = i % 5 === 0;
+    await createReservation({
+      userId: employee2.id,
+      spotId: 'A02',
+      date: pastDate,
+      slot: ReservationSlot.PM,
+      needsCharger: true,
+      status: released ? ReservationStatus.RELEASED : ReservationStatus.BOOKED,
+      checkIn: !released && i % 3 === 0,
+    });
+  }
+
+  for (let i = 1; i <= 10; i++) {
+    const date = addDays(d0, -i);
     const checked = i % 3 === 0;
 
     await createReservation({
       userId: manager1.id,
-      spotId: 'D07',
+      spotId: 'D06',
       date,
       slot: ReservationSlot.AM,
       needsCharger: false,
       status: checked ? ReservationStatus.CHECKED_IN : ReservationStatus.BOOKED,
       checkIn: checked,
     });
+  }
+
+  const LONG_DAYS = 90;
+  const managerSpotAssignments: Array<{
+    userId: string;
+    spotId: string;
+    needsCharger: boolean;
+  }> = [
+    { userId: manager1.id, spotId: 'D07', needsCharger: false },
+    { userId: manager2.id, spotId: 'E08', needsCharger: false },
+  ];
+
+  for (const m of managerSpotAssignments) {
+    for (let i = 0; i < LONG_DAYS; i++) {
+      const date = addDays(d0, i);
+
+      await createReservation({
+        userId: m.userId,
+        spotId: m.spotId,
+        date,
+        slot: ReservationSlot.AM,
+        needsCharger: m.needsCharger,
+        status:
+          i % 12 === 0
+            ? ReservationStatus.RELEASED
+            : i % 4 === 0
+              ? ReservationStatus.CHECKED_IN
+              : ReservationStatus.BOOKED,
+        checkIn: i % 4 === 0,
+      });
+
+      await createReservation({
+        userId: m.userId,
+        spotId: m.spotId,
+        date,
+        slot: ReservationSlot.PM,
+        needsCharger: m.needsCharger,
+        status:
+          i % 10 === 0
+            ? ReservationStatus.RELEASED
+            : i % 3 === 0
+              ? ReservationStatus.CHECKED_IN
+              : ReservationStatus.BOOKED,
+        checkIn: i % 3 === 0,
+      });
+    }
   }
 
   await prisma.auditEvent.create({
@@ -311,6 +387,7 @@ async function main() {
         users: [
           secretary1.email,
           manager1.email,
+          manager2.email,
           employee1.email,
           employee2.email,
           employee3.email,
