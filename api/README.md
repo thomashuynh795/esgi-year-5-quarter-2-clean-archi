@@ -31,6 +31,18 @@
 $ npm install
 ```
 
+## Environment
+
+Create an `.env` file in [`/Users/user/esgi-year-5-quarter-2-clean-archi/api/.env.example`](/Users/user/esgi-year-5-quarter-2-clean-archi/api/.env.example) and adjust values as needed.
+
+RabbitMQ settings used by the reservation outbox publisher:
+
+```bash
+RABBITMQ_URL="amqp://parking:parking@localhost:5672"
+RABBITMQ_QUEUE_PREFIX=""
+RABBITMQ_RESERVATION_CREATED_QUEUE="reservation.created"
+```
+
 ## Docker
 
 ### Prerequisites
@@ -38,6 +50,12 @@ $ npm install
 
 ### Run in development (hot reload)
 This mode mounts your local source code into the container and starts NestJS in `--watch` mode.
+
+```bash
+docker compose up -d db rabbitmq
+```
+
+RabbitMQ management UI is exposed on `http://localhost:15672` with `parking` / `parking`.
 
 ```bash
 docker compose -f docker-compose.dev.yaml up --build
