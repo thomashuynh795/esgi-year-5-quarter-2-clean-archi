@@ -30,8 +30,10 @@ export class GetAvailableSlotsUseCase {
         datesToCheck,
         slot,
       );
-    const reservedSpotIds = new Set(reservations.map((r) => r.spotId));
+    const reservedSpotIds = new Set(
+      reservations.map((reservation) => reservation.spotId.value),
+    );
 
-    return allSpots.filter((spot) => !reservedSpotIds.has(spot.id));
+    return allSpots.filter((spot) => !reservedSpotIds.has(spot.id.value));
   }
 }

@@ -2,24 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import ParkingGrid from "../components/ParkingGrid";
 import { useAuth } from "../context/AuthContext";
 import { buildMockParkingSpots, buildMockStats } from "../domain/mock";
-import type { DailyOccupancyViewModel, DashboardStatistics, ParkingSpotViewModel } from "../domain/models";
+import type {
+  DailyOccupancyViewModel,
+  DashboardStatistics,
+  ParkingSpotViewModel,
+} from "../domain/models";
 import { formatDateInput } from "../domain/parkingRules";
 import { AdminService } from "../services/AdminService";
 import { ParkingService } from "../services/ParkingService";
 import { ApiError } from "../services/api";
 
-const managerWidgets = [
-  {
-    title: "Usage moyen",
-    value: "Placeholder",
-    description: "Widget reserve pour l'usage moyen hebdomadaire par employe.",
-  },
-  {
-    title: "Usage chargeurs",
-    value: "Placeholder",
-    description: "Widget reserve a la proportion reelle d'utilisation des bornes.",
-  },
-];
+function parsePercent(value?: string): number {
+  if (!value) {
+    return 0;
+  }
+
+  const normalized = Number.parseFloat(value.replace("%", "").trim());
+  if (Number.isNaN(normalized)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, normalized));
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -39,6 +43,43 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const managerWidgets = useMemo(() => {
+    if (!stats) {
+      return [];
+    }
+
+    return [
+      {
+        title: "Usage moyen du mois",
+        value: `${stats.averageReservationsPerWorkingDayInMonth.toFixed(1)}`,
+        description: `${stats.monthlyReservationCount} reservations sur ${stats.workingDaysInMonth} jours ouvres.`,
+        meter: stats.monthlyAverageOccupancyRate,
+        legend: "Occupation moyenne des 60 places",
+      },
+      {
+        title: "Check-ins moyens du mois",
+        value: `${stats.averageCheckInsPerWorkingDayInMonth.toFixed(1)}`,
+        description: `${stats.monthlyCheckInCount} check-ins confirmes sur ${stats.monthLabel}.`,
+        meter: stats.averageCheckInRateLast30Days,
+        legend: "Taux moyen confirme sur 30 jours",
+      },
+      {
+        title: "Usage des chargeurs",
+        value: stats.chargerUsageRate,
+        description: `${stats.totalChargerRequests ?? 0} reservations avec besoin de charge.`,
+        meter: stats.chargerUsageRate,
+        legend: "Part des reservations demandant une borne",
+      },
+      {
+        title: "Pic mensuel",
+        value: `${stats.peakDailyReservationsInMonth}`,
+        description: `Jour le plus charge sur ${stats.monthLabel}.`,
+        meter: stats.monthlyPeakOccupancyRate,
+        legend: "Occupation maximale atteinte",
+      },
+    ];
+  }, [stats]);
 
   const viewSpots = useMemo<ParkingSpotViewModel[]>(() => {
     const isThermalVehicle = user?.vehicleType === "THERMAL";
@@ -183,11 +224,15 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
       <section className="rounded-[2rem] bg-emerald-700 px-6 py-8 text-white shadow-lg">
-        <div className="text-sm uppercase tracking-[0.35em] text-emerald-100">Manager dashboard</div>
-        <h1 className="mt-4 font-serif text-4xl font-semibold">Suivi d'occupation et pilotage</h1>
+        <div className="text-sm uppercase tracking-[0.35em] text-emerald-100">
+          Manager dashboard
+        </div>
+        <h1 className="mt-4 font-serif text-4xl font-semibold">
+          Suivi d'occupation et pilotage
+        </h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-emerald-50">
-          Route manager dediee. Les KPI existants sont branches, et les widgets manquants sont prepares
-          pour les prochains endpoints.
+          Route manager dediee. Les KPI existants sont branches, et les widgets
+          manquants sont prepares pour les prochains endpoints.
         </p>
       </section>
 
@@ -199,7 +244,9 @@ export default function Dashboard() {
 
       <section className="mt-8 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
         <label className="space-y-2">
-          <span className="text-sm font-medium text-stone-700">Date observee</span>
+          <span className="text-sm font-medium text-stone-700">
+            Date observee
+          </span>
           <input
             type="date"
             value={date}
@@ -217,57 +264,157 @@ export default function Dashboard() {
         <>
           <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">Taux d'occupation</div>
-              <div className="mt-3 text-4xl font-semibold text-stone-900">{stats?.fillingRate}</div>
-              <div className="mt-2 text-sm text-stone-600">{stats?.totalReservations} reservations sur {stats?.totalSpots} places</div>
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                Taux d'occupation
+              </div>
+              <div className="mt-3 text-4xl font-semibold text-stone-900">
+                {stats?.fillingRate}
+              </div>
+              <div className="mt-2 text-sm text-stone-600">
+                {stats?.totalReservations} reservations sur {stats?.totalSpots}{" "}
+                places
+              </div>
             </article>
 
             <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">No-show</div>
-              <div className="mt-3 text-4xl font-semibold text-stone-900">{stats?.noShowRate}</div>
-              <div className="mt-2 text-sm text-stone-600">{stats?.totalCheckIns} check-ins comptabilises</div>
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                No-show
+              </div>
+              <div className="mt-3 text-4xl font-semibold text-stone-900">
+                {stats?.noShowRate}
+              </div>
+              <div className="mt-2 text-sm text-stone-600">
+                {stats?.totalCheckIns} check-ins comptabilises
+              </div>
             </article>
 
             <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">Places a chargeur</div>
-              <div className="mt-3 text-4xl font-semibold text-stone-900">{stats?.electricSpots}</div>
-              <div className="mt-2 text-sm text-stone-600">{stats?.electricRate} du parc total</div>
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                Places a chargeur
+              </div>
+              <div className="mt-3 text-4xl font-semibold text-stone-900">
+                {stats?.electricSpots}
+              </div>
+              <div className="mt-2 text-sm text-stone-600">
+                {stats?.electricRate} du parc total
+              </div>
             </article>
 
             <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">Date mesuree</div>
-              <div className="mt-3 text-2xl font-semibold text-stone-900">{stats?.date ?? date}</div>
-              <div className="mt-2 text-sm text-stone-600">Snapshot journalier</div>
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                Date mesuree
+              </div>
+              <div className="mt-3 text-2xl font-semibold text-stone-900">
+                {stats?.date ?? date}
+              </div>
+              <div className="mt-2 text-sm text-stone-600">
+                Snapshot journalier
+              </div>
             </article>
           </section>
 
           <section className="mt-8 grid gap-4 lg:grid-cols-2">
             {managerWidgets.map((widget) => (
-              <article key={widget.title} className="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 p-6">
-                <div className="text-sm uppercase tracking-[0.25em] text-stone-500">{widget.title}</div>
-                <div className="mt-3 text-3xl font-semibold text-stone-800">{widget.value}</div>
-                <p className="mt-3 text-sm leading-6 text-stone-600">{widget.description}</p>
+              <article
+                key={widget.title}
+                className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6"
+              >
+                <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                  {widget.title}
+                </div>
+                <div className="mt-3 text-3xl font-semibold text-stone-800">
+                  {widget.value}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-stone-600">
+                  {widget.description}
+                </p>
+                <div className="mt-5">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-stone-500">
+                    <span>{widget.legend}</span>
+                    <span>{widget.meter}</span>
+                  </div>
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-stone-200">
+                    <div
+                      className="h-full rounded-full bg-emerald-600 transition-all"
+                      style={{ width: `${parsePercent(widget.meter)}%` }}
+                    />
+                  </div>
+                </div>
               </article>
             ))}
+          </section>
+
+          <section className="mt-8 grid gap-4 xl:grid-cols-3">
+            <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                Vue mensuelle
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-stone-900">
+                {stats?.monthLabel}
+              </div>
+              <p className="mt-3 text-sm text-stone-600">
+                {stats?.workingDaysInMonth} jours ouvres analyses pour suivre
+                l'intensite reelle d'utilisation.
+              </p>
+            </article>
+
+            <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                No-show du mois
+              </div>
+              <div className="mt-2 text-4xl font-semibold text-stone-900">
+                {stats?.monthlyNoShowCount}
+              </div>
+              <p className="mt-3 text-sm text-stone-600">
+                Reservations non honorees sur le mois selectionne.
+              </p>
+            </article>
+
+            <article className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+              <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                Reservations du mois
+              </div>
+              <div className="mt-2 text-4xl font-semibold text-stone-900">
+                {stats?.monthlyReservationCount}
+              </div>
+              <p className="mt-3 text-sm text-stone-600">
+                Volume total enregistre sur le mois en cours d'observation.
+              </p>
+            </article>
           </section>
 
           <section className="mt-8 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-sm uppercase tracking-[0.25em] text-stone-500">Disponibilite des places</div>
-                <h2 className="mt-2 font-serif text-2xl font-semibold text-stone-900">Lecture AM / PM par tuile</h2>
+                <div className="text-sm uppercase tracking-[0.25em] text-stone-500">
+                  Disponibilite des places
+                </div>
+                <h2 className="mt-2 font-serif text-2xl font-semibold text-stone-900">
+                  Lecture AM / PM par tuile
+                </h2>
                 <p className="mt-2 max-w-3xl text-sm text-stone-600">
-                  Vert sans pastille: journee libre. Pastille AM ou PM: une demi-journee reste disponible.
-                  Rouge: aucune disponibilite. Gris: place a borne non accessible avec un vehicule thermique.
+                  Vert sans pastille: journee libre. Pastille AM ou PM: une
+                  demi-journee reste disponible. Rouge: aucune disponibilite.
+                  Gris: place a borne non accessible avec un vehicule thermique.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs font-medium">
-                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">Vert: AM + PM dispo</span>
-                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">AM: matin dispo</span>
-                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">PM: apres-midi dispo</span>
-                <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">Rouge: complet</span>
-                <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">Gris: borne non compatible</span>
+                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+                  Vert: AM + PM dispo
+                </span>
+                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+                  AM: matin dispo
+                </span>
+                <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+                  PM: apres-midi dispo
+                </span>
+                <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">
+                  Rouge: complet
+                </span>
+                <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">
+                  Gris: borne non compatible
+                </span>
               </div>
             </div>
 

@@ -51,13 +51,28 @@ export function buildMockReservationHistory(start: string, end: string): Reserva
 export function buildMockStats(date: string): DashboardStatistics {
   return {
     date,
+    monthLabel: "mars 2026",
     totalSpots: 60,
     electricSpots: 20,
     totalReservations: 34,
     totalCheckIns: 29,
+    totalNoShows: 5,
+    totalChargerRequests: 12,
     fillingRate: "57%",
     noShowRate: "15%",
     electricRate: "33%",
+    chargerUsageRate: "35%",
+    averageUsageRateLast30Days: "49%",
+    averageCheckInRateLast30Days: "41%",
+    monthlyReservationCount: 412,
+    monthlyCheckInCount: 351,
+    monthlyNoShowCount: 28,
+    workingDaysInMonth: 21,
+    averageReservationsPerWorkingDayInMonth: 19.6,
+    averageCheckInsPerWorkingDayInMonth: 16.7,
+    peakDailyReservationsInMonth: 43,
+    monthlyAverageOccupancyRate: "32.7%",
+    monthlyPeakOccupancyRate: "71.7%",
   };
 }
 

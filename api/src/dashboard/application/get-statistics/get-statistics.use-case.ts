@@ -96,8 +96,59 @@ export class GetStatisticsUseCase {
     const averageCheckInRate =
       totalSpots > 0 ? avgCheckInsPerDay / totalSpots : 0;
 
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    const monthlyReservations =
+      await this.reservationRepository.findByDateRange({
+        start: monthStart,
+        end: monthEnd,
+        statuses: [
+          ReservationStatus.Booked,
+          ReservationStatus.CheckedIn,
+          ReservationStatus.NoShow,
+          ReservationStatus.Released,
+        ],
+      });
+
+    const monthlyByDay = new Map<string, Reservation[]>();
+    for (const reservation of monthlyReservations) {
+      const key = new Date(reservation.date).toISOString().slice(0, 10);
+      const items = monthlyByDay.get(key) ?? [];
+      items.push(reservation);
+      monthlyByDay.set(key, items);
+    }
+
+    const workingDaysInMonth = this.countWorkingDaysBetween(
+      monthStart,
+      monthEnd,
+    );
+    const monthlyReservationCount = monthlyReservations.length;
+    const monthlyCheckInCount = monthlyReservations.filter(
+      (reservation) => reservation.status === ReservationStatus.CheckedIn,
+    ).length;
+    const monthlyNoShowCount = monthlyReservations.filter(
+      (reservation) => reservation.status === ReservationStatus.NoShow,
+    ).length;
+    const peakDailyReservationsInMonth = Array.from(
+      monthlyByDay.values(),
+    ).reduce((max, items) => Math.max(max, items.length), 0);
+    const averageReservationsPerWorkingDayInMonth =
+      workingDaysInMonth > 0 ? monthlyReservationCount / workingDaysInMonth : 0;
+    const averageCheckInsPerWorkingDayInMonth =
+      workingDaysInMonth > 0 ? monthlyCheckInCount / workingDaysInMonth : 0;
+    const monthlyAverageOccupancyRate =
+      totalSpots > 0 ? averageReservationsPerWorkingDayInMonth / totalSpots : 0;
+    const monthlyPeakOccupancyRate =
+      totalSpots > 0 ? peakDailyReservationsInMonth / totalSpots : 0;
+
     return {
       date: date.toISOString(),
+      monthLabel: date.toLocaleDateString('fr-FR', {
+        month: 'long',
+        year: 'numeric',
+      }),
       totalSpots,
       electricSpots,
       totalReservations,
@@ -110,6 +161,40 @@ export class GetStatisticsUseCase {
       chargerUsageRate: (chargerUsageRate * 100).toFixed(2) + '%',
       averageUsageRateLast30Days: (averageUsageRate * 100).toFixed(2) + '%',
       averageCheckInRateLast30Days: (averageCheckInRate * 100).toFixed(2) + '%',
+      monthlyReservationCount,
+      monthlyCheckInCount,
+      monthlyNoShowCount,
+      workingDaysInMonth,
+      averageReservationsPerWorkingDayInMonth: Number(
+        averageReservationsPerWorkingDayInMonth.toFixed(1),
+      ),
+      averageCheckInsPerWorkingDayInMonth: Number(
+        averageCheckInsPerWorkingDayInMonth.toFixed(1),
+      ),
+      peakDailyReservationsInMonth,
+      monthlyAverageOccupancyRate:
+        (monthlyAverageOccupancyRate * 100).toFixed(2) + '%',
+      monthlyPeakOccupancyRate:
+        (monthlyPeakOccupancyRate * 100).toFixed(2) + '%',
     };
+  }
+
+  private countWorkingDaysBetween(start: Date, end: Date): number {
+    const cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+
+    const last = new Date(end);
+    last.setHours(0, 0, 0, 0);
+
+    let count = 0;
+    while (cursor.getTime() <= last.getTime()) {
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) {
+        count++;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return count;
   }
 }

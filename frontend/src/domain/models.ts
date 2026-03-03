@@ -98,13 +98,28 @@ export interface ReservationValidationResult {
 
 export interface DashboardStatistics {
   date: string;
+  monthLabel: string;
   totalSpots: number;
   electricSpots: number;
   totalReservations: number;
   totalCheckIns: number;
+  totalNoShows: number;
+  totalChargerRequests?: number;
   fillingRate: string;
   noShowRate: string;
   electricRate: string;
+  chargerUsageRate: string;
+  averageUsageRateLast30Days: string;
+  averageCheckInRateLast30Days: string;
+  monthlyReservationCount: number;
+  monthlyCheckInCount: number;
+  monthlyNoShowCount: number;
+  workingDaysInMonth: number;
+  averageReservationsPerWorkingDayInMonth: number;
+  averageCheckInsPerWorkingDayInMonth: number;
+  peakDailyReservationsInMonth: number;
+  monthlyAverageOccupancyRate: string;
+  monthlyPeakOccupancyRate: string;
 }
 
 export interface ApiReservationDto {
