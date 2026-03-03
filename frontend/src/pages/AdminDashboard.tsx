@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ParkingGrid from "../components/ParkingGrid";
 import { useAuth } from "../context/AuthContext";
 import { buildMockParkingSpots } from "../domain/mock";
-import type { AuthUser, ParkingSpot, ParkingSpotViewModel, ReservationSlot, ReservationViewModel, UserRole } from "../domain/models";
+import type {
+  AuthUser,
+  ParkingSpot,
+  ParkingSpotViewModel,
+  ReservationSlot,
+  ReservationViewModel,
+  UserRole,
+} from "../domain/models";
 import { formatDateInput } from "../domain/parkingRules";
 import { AdminService } from "../services/AdminService";
 import { ParkingService } from "../services/ParkingService";
@@ -60,7 +67,10 @@ function addDays(date: string, delta: number): string {
 }
 
 function formatUserLabel(user: AuthUser): string {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const fullName = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   return fullName || user.email;
 }
 
@@ -70,13 +80,18 @@ export default function AdminDashboard() {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [userForm, setUserForm] = useState<AuthUser | null>(null);
-  const [createUserDraft, setCreateUserDraft] = useState<CreateUserDraft>(emptyCreateUserDraft);
+  const [createUserDraft, setCreateUserDraft] =
+    useState<CreateUserDraft>(emptyCreateUserDraft);
   const [reservations, setReservations] = useState<ReservationViewModel[]>([]);
-  const [allReservations, setAllReservations] = useState<AdminReservation[]>([]);
+  const [allReservations, setAllReservations] = useState<AdminReservation[]>(
+    [],
+  );
   const [historyDate, setHistoryDate] = useState(formatDateInput(new Date()));
-  const [editReservation, setEditReservation] = useState<ReservationEditor | null>(null);
+  const [editReservation, setEditReservation] =
+    useState<ReservationEditor | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const editReservationFormRef = useRef<HTMLFormElement | null>(null);
 
   const selectedUser = useMemo(
     () => users.find((item) => item.id === selectedUserId) ?? null,
@@ -87,11 +102,16 @@ export default function AdminDashboard() {
     return spots
       .map((spot) => {
         const spotReservations = allReservations.filter(
-          (reservation) => reservation.date === historyDate && reservation.spotId === spot.id,
+          (reservation) =>
+            reservation.date === historyDate && reservation.spotId === spot.id,
         );
 
-        const amReservation = spotReservations.find((reservation) => reservation.slot === "AM");
-        const pmReservation = spotReservations.find((reservation) => reservation.slot === "PM");
+        const amReservation = spotReservations.find(
+          (reservation) => reservation.slot === "AM",
+        );
+        const pmReservation = spotReservations.find(
+          (reservation) => reservation.slot === "PM",
+        );
 
         return {
           spotId: spot.id,
@@ -114,7 +134,10 @@ export default function AdminDashboard() {
             : undefined,
         };
       })
-      .sort((left, right) => left.row.localeCompare(right.row) || left.number - right.number);
+      .sort(
+        (left, right) =>
+          left.row.localeCompare(right.row) || left.number - right.number,
+      );
   }, [allReservations, historyDate, spots]);
 
   const occupancyViewSpots = useMemo<ParkingSpotViewModel[]>(() => {
@@ -130,7 +153,6 @@ export default function AdminDashboard() {
           hasCharger: cell.hasCharger,
           isActive: true,
           status: "unavailable",
-          statusLabel: "Borne reservee aux vehicules elec./hybrides",
           typeLabel: cell.hasCharger ? "Electric" : "Standard",
           tileTone: "dashboardBlocked",
           hideChargerBadge: true,
@@ -148,7 +170,6 @@ export default function AdminDashboard() {
           hasCharger: cell.hasCharger,
           isActive: true,
           status: "available",
-          statusLabel: "Matin et apres-midi disponibles",
           typeLabel: cell.hasCharger ? "Electric" : "Standard",
           tileTone: "dashboardAvailable",
           hideChargerBadge: true,
@@ -163,7 +184,6 @@ export default function AdminDashboard() {
           hasCharger: cell.hasCharger,
           isActive: true,
           status: "available",
-          statusLabel: "Matin disponible, apres-midi reserve",
           typeLabel: cell.hasCharger ? "Electric" : "Standard",
           tileTone: "dashboardPartial",
           badgeLabel: "AM",
@@ -179,7 +199,6 @@ export default function AdminDashboard() {
           hasCharger: cell.hasCharger,
           isActive: true,
           status: "available",
-          statusLabel: "Matin reserve, apres-midi disponible",
           typeLabel: cell.hasCharger ? "Electric" : "Standard",
           tileTone: "dashboardPartial",
           badgeLabel: "PM",
@@ -194,7 +213,6 @@ export default function AdminDashboard() {
         hasCharger: cell.hasCharger,
         isActive: true,
         status: "reserved",
-        statusLabel: "Aucune disponibilite sur la journee",
         typeLabel: cell.hasCharger ? "Electric" : "Standard",
         tileTone: "dashboardUnavailable",
         hideChargerBadge: true,
@@ -204,12 +222,17 @@ export default function AdminDashboard() {
 
   async function loadUserReservations(userId: string) {
     try {
-      const reservationResults = await ParkingService.getReservationsForUser(userId);
+      const reservationResults =
+        await ParkingService.getReservationsForUser(userId);
       setReservations(reservationResults);
       setEditReservation(null);
     } catch (error) {
       setReservations([]);
-      setFeedback(error instanceof ApiError ? error.message : "Impossible de charger les reservations utilisateur.");
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : "Impossible de charger les reservations utilisateur.",
+      );
     }
   }
 
@@ -228,7 +251,8 @@ export default function AdminDashboard() {
       const reservationBuckets = await Promise.all(
         userResults.map(async (item) => {
           try {
-            const reservationResults = await ParkingService.getReservationsForUser(item.id);
+            const reservationResults =
+              await ParkingService.getReservationsForUser(item.id);
             return reservationResults.map((reservation) => ({
               ...reservation,
               userId: item.id,
@@ -250,7 +274,11 @@ export default function AdminDashboard() {
         setUserForm(userResults[0]);
       }
     } catch (error) {
-      setFeedback(error instanceof ApiError ? error.message : "Chargement admin impossible.");
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : "Chargement admin impossible.",
+      );
       setSpots(buildMockParkingSpots());
       setAllReservations([]);
     } finally {
@@ -267,10 +295,22 @@ export default function AdminDashboard() {
       return;
     }
 
-    const currentUser = users.find((item) => item.id === selectedUserId) ?? null;
+    const currentUser =
+      users.find((item) => item.id === selectedUserId) ?? null;
     setUserForm(currentUser);
     void loadUserReservations(selectedUserId);
   }, [selectedUserId, users]);
+
+  useEffect(() => {
+    if (!editReservation) {
+      return;
+    }
+
+    editReservationFormRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [editReservation]);
 
   if (!user) {
     return null;
@@ -285,7 +325,11 @@ export default function AdminDashboard() {
       setCreateUserDraft(emptyCreateUserDraft);
       await loadAdminData({ keepFeedback: true });
     } catch (error) {
-      setFeedback(error instanceof ApiError ? error.message : "Creation utilisateur impossible.");
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : "Creation utilisateur impossible.",
+      );
     }
   }
 
@@ -307,11 +351,17 @@ export default function AdminDashboard() {
       setFeedback("Utilisateur mis a jour.");
       await loadAdminData({ keepFeedback: true });
     } catch (error) {
-      setFeedback(error instanceof ApiError ? error.message : "Mise a jour utilisateur impossible.");
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : "Mise a jour utilisateur impossible.",
+      );
     }
   }
 
-  async function handleReservationSave(event: React.FormEvent<HTMLFormElement>) {
+  async function handleReservationSave(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     if (!editReservation) {
       return;
@@ -324,7 +374,11 @@ export default function AdminDashboard() {
       await loadUserReservations(selectedUserId);
       setEditReservation(null);
     } catch (error) {
-      setFeedback(error instanceof ApiError ? error.message : "Modification de reservation impossible.");
+      setFeedback(
+        error instanceof ApiError
+          ? error.message
+          : "Modification de reservation impossible.",
+      );
     }
   }
 
@@ -338,17 +392,24 @@ export default function AdminDashboard() {
         setEditReservation(null);
       }
     } catch (error) {
-      setFeedback(error instanceof ApiError ? error.message : "Annulation impossible.");
+      setFeedback(
+        error instanceof ApiError ? error.message : "Annulation impossible.",
+      );
     }
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
       <section className="rounded-[2rem] bg-stone-900 px-6 py-8 text-white shadow-lg">
-        <div className="text-sm uppercase tracking-[0.35em] text-amber-200">Secretary admin</div>
-        <h1 className="mt-4 font-serif text-4xl font-semibold">Administration complete du parking</h1>
+        <div className="text-sm uppercase tracking-[0.35em] text-amber-200">
+          Secretary admin
+        </div>
+        <h1 className="mt-4 font-serif text-4xl font-semibold">
+          Administration complete du parking
+        </h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-300">
-          Gestion des utilisateurs, edition des reservations et lecture jour par jour de l'occupation du parking.
+          Gestion des utilisateurs, edition des reservations et lecture jour par
+          jour de l'occupation du parking.
         </p>
       </section>
 
@@ -359,10 +420,17 @@ export default function AdminDashboard() {
       )}
 
       <section className="mt-8 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <form onSubmit={handleCreateUser} className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleCreateUser}
+          className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm"
+        >
           <div className="mb-5">
-            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">Creation utilisateur</div>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">Nouveau compte employe</h2>
+            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">
+              Creation utilisateur
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+              Nouveau compte employe
+            </h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -373,7 +441,10 @@ export default function AdminDashboard() {
                 required
                 value={createUserDraft.email}
                 onChange={(event) =>
-                  setCreateUserDraft((current) => ({ ...current, email: event.target.value }))
+                  setCreateUserDraft((current) => ({
+                    ...current,
+                    email: event.target.value,
+                  }))
                 }
                 className="w-full rounded-2xl border border-stone-200 px-4 py-3"
               />
@@ -384,7 +455,10 @@ export default function AdminDashboard() {
                 required
                 value={createUserDraft.firstName}
                 onChange={(event) =>
-                  setCreateUserDraft((current) => ({ ...current, firstName: event.target.value }))
+                  setCreateUserDraft((current) => ({
+                    ...current,
+                    firstName: event.target.value,
+                  }))
                 }
                 className="w-full rounded-2xl border border-stone-200 px-4 py-3"
               />
@@ -395,13 +469,18 @@ export default function AdminDashboard() {
                 required
                 value={createUserDraft.lastName}
                 onChange={(event) =>
-                  setCreateUserDraft((current) => ({ ...current, lastName: event.target.value }))
+                  setCreateUserDraft((current) => ({
+                    ...current,
+                    lastName: event.target.value,
+                  }))
                 }
                 className="w-full rounded-2xl border border-stone-200 px-4 py-3"
               />
             </label>
             <label className="space-y-2">
-              <span className="text-sm font-medium text-stone-700">Type de vehicule</span>
+              <span className="text-sm font-medium text-stone-700">
+                Type de vehicule
+              </span>
               <select
                 value={createUserDraft.vehicleType}
                 onChange={(event) =>
@@ -430,14 +509,18 @@ export default function AdminDashboard() {
 
         <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-stone-900">Utilisateurs</h2>
+            <h2 className="text-2xl font-semibold text-stone-900">
+              Utilisateurs
+            </h2>
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
               {users.length} comptes
             </span>
           </div>
 
           {loading ? (
-            <div className="py-10 text-center text-stone-500">Chargement...</div>
+            <div className="py-10 text-center text-stone-500">
+              Chargement...
+            </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {users.map((item) => (
@@ -464,22 +547,35 @@ export default function AdminDashboard() {
       </section>
 
       <section className="mt-8 grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <form onSubmit={handleUserSave} className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleUserSave}
+          className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm"
+        >
           <div className="mb-5">
-            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">Gestion utilisateur</div>
+            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">
+              Gestion utilisateur
+            </div>
             <h2 className="mt-2 text-2xl font-semibold text-stone-900">
-              {selectedUser ? selectedUser.email : "Selectionnez un utilisateur"}
+              {selectedUser
+                ? selectedUser.email
+                : "Selectionnez un utilisateur"}
             </h2>
           </div>
 
           {userForm ? (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">Prenom</span>
+                <span className="text-sm font-medium text-stone-700">
+                  Prenom
+                </span>
                 <input
                   value={userForm.firstName ?? ""}
                   onChange={(event) =>
-                    setUserForm((current) => (current ? { ...current, firstName: event.target.value } : current))
+                    setUserForm((current) =>
+                      current
+                        ? { ...current, firstName: event.target.value }
+                        : current,
+                    )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
                 />
@@ -489,18 +585,30 @@ export default function AdminDashboard() {
                 <input
                   value={userForm.lastName ?? ""}
                   onChange={(event) =>
-                    setUserForm((current) => (current ? { ...current, lastName: event.target.value } : current))
+                    setUserForm((current) =>
+                      current
+                        ? { ...current, lastName: event.target.value }
+                        : current,
+                    )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">Type de vehicule</span>
+                <span className="text-sm font-medium text-stone-700">
+                  Type de vehicule
+                </span>
                 <select
                   value={userForm.vehicleType}
                   onChange={(event) =>
                     setUserForm((current) =>
-                      current ? { ...current, vehicleType: event.target.value as AuthUser["vehicleType"] } : current,
+                      current
+                        ? {
+                            ...current,
+                            vehicleType: event.target
+                              .value as AuthUser["vehicleType"],
+                          }
+                        : current,
                     )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
@@ -516,29 +624,47 @@ export default function AdminDashboard() {
                   type="checkbox"
                   checked={Boolean(userForm.isActive)}
                   onChange={(event) =>
-                    setUserForm((current) => (current ? { ...current, isActive: event.target.checked } : current))
+                    setUserForm((current) =>
+                      current
+                        ? { ...current, isActive: event.target.checked }
+                        : current,
+                    )
                   }
                 />
-                <span className="text-sm font-medium text-stone-700">Compte actif</span>
+                <span className="text-sm font-medium text-stone-700">
+                  Compte actif
+                </span>
               </label>
 
               <div className="md:col-span-2">
-                <div className="mb-2 text-sm font-medium text-stone-700">Roles</div>
+                <div className="mb-2 text-sm font-medium text-stone-700">
+                  Roles
+                </div>
                 <div className="flex flex-wrap gap-3">
-                  {(["EMPLOYEE", "MANAGER", "SECRETARY"] as const).map((role) => (
-                    <label key={role} className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={userForm.roles.includes(role)}
-                        onChange={() =>
-                          setUserForm((current) =>
-                            current ? { ...current, roles: toggleRole(current.roles, role) } : current,
-                          )
-                        }
-                      />
-                      {role}
-                    </label>
-                  ))}
+                  {(["EMPLOYEE", "MANAGER", "SECRETARY"] as const).map(
+                    (role) => (
+                      <label
+                        key={role}
+                        className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={userForm.roles.includes(role)}
+                          onChange={() =>
+                            setUserForm((current) =>
+                              current
+                                ? {
+                                    ...current,
+                                    roles: toggleRole(current.roles, role),
+                                  }
+                                : current,
+                            )
+                          }
+                        />
+                        {role}
+                      </label>
+                    ),
+                  )}
                 </div>
               </div>
 
@@ -560,8 +686,12 @@ export default function AdminDashboard() {
 
         <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
-            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">Reservations utilisateur</div>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">Edition ponctuelle</h2>
+            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">
+              Reservations utilisateur
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+              Edition ponctuelle
+            </h2>
           </div>
 
           {selectedUserId ? (
@@ -572,9 +702,12 @@ export default function AdminDashboard() {
                   className="flex w-full items-center justify-between rounded-3xl border border-stone-200 bg-stone-50 p-4"
                 >
                   <div>
-                    <div className="font-semibold text-stone-900">{reservation.spotLabel}</div>
+                    <div className="font-semibold text-stone-900">
+                      {reservation.spotLabel}
+                    </div>
                     <div className="text-sm text-stone-600">
-                      {reservation.date} · {reservation.slot} · {reservation.status}
+                      {reservation.date} · {reservation.slot} ·{" "}
+                      {reservation.status}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -586,21 +719,25 @@ export default function AdminDashboard() {
                           spotId: reservation.spotId,
                           date: reservation.date,
                           slot: reservation.slot,
-                          needsCharging: false,
+                          needsCharging: Boolean(reservation.needsCharging),
                         })
                       }
                       className="rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-stone-700 transition hover:bg-stone-100"
+                      hidden={!reservation.canEdit}
                     >
                       Modifier
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleReservationCancel(reservation.id)}
-                      disabled={reservation.status === "CANCELLED"}
-                      className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-200"
-                    >
-                      Annuler
-                    </button>
+                    {reservation.canCancel ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleReservationCancel(reservation.id)
+                        }
+                        className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-rose-700"
+                      >
+                        Annuler
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -614,14 +751,30 @@ export default function AdminDashboard() {
           ) : null}
 
           {editReservation && (
-            <form onSubmit={handleReservationSave} className="mt-5 grid gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-4 md:grid-cols-2">
+            <form
+              ref={editReservationFormRef}
+              onSubmit={handleReservationSave}
+              className="mt-5 grid gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-4 md:grid-cols-2"
+            >
+              <div className="md:col-span-2">
+                <div className="text-sm uppercase tracking-[0.2em] text-stone-500">
+                  Reservation en cours d'edition
+                </div>
+                <div className="mt-1 text-sm text-stone-700">
+                  {editReservation.spotId} · {editReservation.date} · {editReservation.slot}
+                </div>
+              </div>
               <label className="space-y-2">
-                <span className="text-sm font-medium text-stone-700">Place</span>
+                <span className="text-sm font-medium text-stone-700">
+                  Place
+                </span>
                 <select
                   value={editReservation.spotId}
                   onChange={(event) =>
                     setEditReservation((current) =>
-                      current ? { ...current, spotId: event.target.value } : current,
+                      current
+                        ? { ...current, spotId: event.target.value }
+                        : current,
                     )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
@@ -641,7 +794,9 @@ export default function AdminDashboard() {
                   value={editReservation.date}
                   onChange={(event) =>
                     setEditReservation((current) =>
-                      current ? { ...current, date: event.target.value } : current,
+                      current
+                        ? { ...current, date: event.target.value }
+                        : current,
                     )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
@@ -654,7 +809,12 @@ export default function AdminDashboard() {
                   value={editReservation.slot}
                   onChange={(event) =>
                     setEditReservation((current) =>
-                      current ? { ...current, slot: event.target.value as ReservationSlot } : current,
+                      current
+                        ? {
+                            ...current,
+                            slot: event.target.value as ReservationSlot,
+                          }
+                        : current,
                     )
                   }
                   className="w-full rounded-2xl border border-stone-200 px-4 py-3"
@@ -670,11 +830,15 @@ export default function AdminDashboard() {
                   checked={editReservation.needsCharging}
                   onChange={(event) =>
                     setEditReservation((current) =>
-                      current ? { ...current, needsCharging: event.target.checked } : current,
+                      current
+                        ? { ...current, needsCharging: event.target.checked }
+                        : current,
                     )
                   }
                 />
-                <span className="text-sm font-medium text-stone-700">Besoin de charge</span>
+                <span className="text-sm font-medium text-stone-700">
+                  Besoin de charge
+                </span>
               </label>
 
               <div className="md:col-span-2 flex gap-3">
@@ -700,10 +864,15 @@ export default function AdminDashboard() {
       <section className="mt-8 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">Historique journalier</div>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">Occupation detaillee des 60 places</h2>
+            <div className="text-sm uppercase tracking-[0.35em] text-stone-500">
+              Historique journalier
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+              Occupation detaillee des 60 places
+            </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Naviguez jour par jour. Les tuiles suivent les 5 etats AM/PM du dashboard.
+              Naviguez jour par jour. Les tuiles suivent les 5 etats AM/PM du
+              dashboard.
             </p>
           </div>
 
@@ -729,11 +898,21 @@ export default function AdminDashboard() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">Vert: AM + PM dispo</span>
-          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">AM: matin dispo</span>
-          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">PM: apres-midi dispo</span>
-          <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">Rouge: complet</span>
-          <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">Gris: borne non compatible</span>
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+            Vert: AM + PM dispo
+          </span>
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+            AM: matin dispo
+          </span>
+          <span className="rounded-full bg-emerald-100 px-3 py-2 text-emerald-800">
+            PM: apres-midi dispo
+          </span>
+          <span className="rounded-full bg-rose-100 px-3 py-2 text-rose-800">
+            Rouge: complet
+          </span>
+          <span className="rounded-full bg-stone-200 px-3 py-2 text-stone-700">
+            Gris: borne non compatible
+          </span>
         </div>
 
         <div className="mt-6">

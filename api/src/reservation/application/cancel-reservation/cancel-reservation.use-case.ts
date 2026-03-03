@@ -35,6 +35,12 @@ export class CancelReservationUseCase {
     }
 
     const now = new Date();
+    if (this.isReservationInPast(reservation.date, reservation.slot, now)) {
+      throw new BadRequestException(
+        'Cannot cancel a reservation that is already in the past.',
+      );
+    }
+
     const previousStatus = reservation.status;
     reservation.cancel(now);
 
@@ -47,5 +53,31 @@ export class CancelReservationUseCase {
       },
     });
     return this.reservationRepository.save(reservation);
+  }
+
+  private isReservationInPast(date: Date, slot: string, now: Date): boolean {
+    const reservationDate = new Date(date);
+    reservationDate.setHours(0, 0, 0, 0);
+
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    if (reservationDate.getTime() < today.getTime()) {
+      return true;
+    }
+
+    if (reservationDate.getTime() > today.getTime()) {
+      return false;
+    }
+
+    if (slot === 'AM') {
+      const amCutoff = new Date(today);
+      amCutoff.setHours(12, 0, 0, 0);
+      return now.getTime() >= amCutoff.getTime();
+    }
+
+    const pmCutoff = new Date(today);
+    pmCutoff.setHours(18, 0, 0, 0);
+    return now.getTime() >= pmCutoff.getTime();
   }
 }

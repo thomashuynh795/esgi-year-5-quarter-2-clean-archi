@@ -55,6 +55,13 @@ export class UpdateReservationUseCase {
       );
     }
 
+    const now = new Date();
+    if (this.isReservationInPast(reservation.date, reservation.slot, now)) {
+      throw new BadRequestException(
+        'Cannot edit a reservation that is already in the past.',
+      );
+    }
+
     const newSpotId = params.spotId
       ? ParkingSpotId.of(params.spotId)
       : reservation.spotId;
@@ -64,6 +71,12 @@ export class UpdateReservationUseCase {
 
     const normalizedDate = new Date(newDate);
     normalizedDate.setHours(0, 0, 0, 0);
+    if (this.isReservationInPast(normalizedDate, newSlot, now)) {
+      throw new BadRequestException(
+        'Cannot move a reservation to a slot that is already in the past.',
+      );
+    }
+
     const day = normalizedDate.getDay();
     const isWeekend = day === 0 || day === 6;
     if (isWeekend) {
@@ -138,5 +151,31 @@ export class UpdateReservationUseCase {
     });
 
     return saved;
+  }
+
+  private isReservationInPast(date: Date, slot: string, now: Date): boolean {
+    const reservationDate = new Date(date);
+    reservationDate.setHours(0, 0, 0, 0);
+
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    if (reservationDate.getTime() < today.getTime()) {
+      return true;
+    }
+
+    if (reservationDate.getTime() > today.getTime()) {
+      return false;
+    }
+
+    if (slot === 'AM') {
+      const amCutoff = new Date(today);
+      amCutoff.setHours(12, 0, 0, 0);
+      return now.getTime() >= amCutoff.getTime();
+    }
+
+    const pmCutoff = new Date(today);
+    pmCutoff.setHours(18, 0, 0, 0);
+    return now.getTime() >= pmCutoff.getTime();
   }
 }

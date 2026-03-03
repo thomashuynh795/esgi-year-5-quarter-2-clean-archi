@@ -1,6 +1,7 @@
 import type {
   ParkingSpot,
   ReservationDraft,
+  ReservationSlot,
   ReservationValidationResult,
   SpotStatus,
   UserRole,
@@ -26,6 +27,39 @@ export function formatDateInput(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function isReservationSlotPast(
+  date: string,
+  slot: ReservationSlot,
+  now: Date = new Date(),
+): boolean {
+  const reservationDate = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(reservationDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  if (reservationDate.getTime() < today.getTime()) {
+    return true;
+  }
+
+  if (reservationDate.getTime() > today.getTime()) {
+    return false;
+  }
+
+  if (slot === "AM") {
+    const amCutoff = new Date(today);
+    amCutoff.setHours(12, 0, 0, 0);
+    return now.getTime() >= amCutoff.getTime();
+  }
+
+  const pmCutoff = new Date(today);
+  pmCutoff.setHours(18, 0, 0, 0);
+  return now.getTime() >= pmCutoff.getTime();
 }
 
 export function getBusinessDatesBetween(

@@ -95,6 +95,7 @@ export class ReservationController {
       id: res.id,
       date: res.date,
       status: res.status,
+      needsCharging: res.needsCharger,
       period: res.slot,
       slot: {
         id: res.spotId,

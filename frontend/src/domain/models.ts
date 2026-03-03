@@ -52,8 +52,10 @@ export interface ReservationViewModel {
   status: string;
   spotId: string;
   spotLabel: string;
+  needsCharging?: boolean;
   canCheckIn: boolean;
   canCancel: boolean;
+  canEdit?: boolean;
 }
 
 export interface ReservationHistoryEntry {

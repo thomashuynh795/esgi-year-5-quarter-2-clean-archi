@@ -6,7 +6,11 @@ import type {
   ReservationViewModel,
   ReservationSlot,
 } from "../domain/models";
-import { getBusinessDatesBetween, isElectricRow } from "../domain/parkingRules";
+import {
+  getBusinessDatesBetween,
+  isElectricRow,
+  isReservationSlotPast,
+} from "../domain/parkingRules";
 import api from "./api";
 
 type ApiScalar<T> = T | { value: T } | null | undefined;
@@ -72,6 +76,9 @@ function mapReservation(dto: ApiReservationResponseDto): ReservationViewModel {
   const status = dto.status ?? "CONFIRMED";
   const spotId = unwrapApiValue(dto.slot?.id) ?? unwrapApiValue(dto.slot?.name) ?? "Unknown";
   const spotLabel = unwrapApiValue(dto.slot?.name) ?? unwrapApiValue(dto.slot?.id) ?? "Unknown";
+  const isPast = isReservationSlotPast(toIsoDate(dto.date), dto.period);
+  const canMutate =
+    !isPast && status !== "CANCELLED" && status !== "CHECKED_IN" && status !== "NO_SHOW" && status !== "RELEASED";
   return {
     id: dto.id,
     date: toIsoDate(dto.date),
@@ -79,8 +86,10 @@ function mapReservation(dto: ApiReservationResponseDto): ReservationViewModel {
     status,
     spotId,
     spotLabel,
+    needsCharging: Boolean((dto as { needsCharging?: boolean }).needsCharging),
     canCheckIn: status === "BOOKED" || status === "CONFIRMED",
-    canCancel: status !== "CANCELLED" && status !== "CHECKED_IN",
+    canCancel: canMutate,
+    canEdit: canMutate,
   };
 }
 
